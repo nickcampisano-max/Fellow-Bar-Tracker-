@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fellow Bar — Period Tracker v4</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+<style>
+:root,[data-theme="light"]{
+  --bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;
+  --off:#f3f0ec;--dyn:#e6e4df;--divider:#dcd9d5;--border:#d4d1ca;
+  --text:#28251d;--muted:#7a7974;--faint:#bab9b4;
+  --primary:#01696f;--primary-h:#0c4e54;--primary-hl:#cedcd8;
+  --ok:#437a22;--ok-hl:#d4dfcc;--ok-bd:#b8d4a8;
+  --warn:#964219;--warn-hl:#ddcfc6;--warn-bd:#c8a898;
+  --err:#a12c7b;--err-hl:#e0ced7;--err-bd:#c8a8c0;
+  --blue:#006494;--blue-hl:#c6d8e4;--blue-bd:#a0c0d8;
+  --r-sm:.375rem;--r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;--r-full:9999px;
+  --sh-sm:0 1px 2px oklch(0.2 0.01 80/.06);--sh-md:0 4px 12px oklch(0.2 0.01 80/.08);
+  --xs:clamp(.7rem,.65rem + .2vw,.8rem);--sm:clamp(.8rem,.75rem + .2vw,.875rem);
+  --base:clamp(.9rem,.85rem + .2vw,1rem);--lg:clamp(1rem,.9rem + .4vw,1.2rem);
+  --xl:clamp(1.1rem,.95rem + .7vw,1.5rem);--tr:180ms cubic-bezier(.16,1,.3,1);
+  --font:'Satoshi','Inter',sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#171614;--surface:#1c1b19;--surface-2:#201f1d;--off:#222120;--dyn:#2d2c2a;
+  --divider:#262523;--border:#393836;--text:#cdccca;--muted:#797876;--faint:#5a5957;
+  --primary:#4f98a3;--primary-h:#227f8b;--primary-hl:#1e3336;
+  --ok:#6daa45;--ok-hl:#2a3a22;--ok-bd:#3a5030;
+  --warn:#bb653b;--warn-hl:#3a2a20;--warn-bd:#5a3828;
+  --err:#d163a7;--err-hl:#3a2030;--err-bd:#5a3050;
+  --blue:#5591c7;--blue-hl:#1e3050;--blue-bd:#2a4870;
+  --sh-sm:0 1px 2px oklch(0 0 0/.25);--sh-md:0 4px 12px oklch(0 0 0/.35);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;font-family:var(--font);font-size:var(--sm);color:var(--text);background:var(--bg);transition:background var(--tr),color var(--tr)}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+input,textarea{font:inherit;color:inherit}
+table{border-collapse:collapse;width:100%}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--divider);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200;box-shadow:var(--sh-sm)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-name{font-size:var(--base);font-weight:700;letter-spacing:-.01em}
+.brand-sub{font-size:var(--xs);color:var(--muted)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:var(--r-md);font-size:var(--xs);font-weight:600;transition:all var(--tr);cursor:pointer;border:none;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-h)}
+.btn-ghost{background:none;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{background:var(--off);color:var(--text)}
+.icon-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-md);color:var(--muted);transition:all var(--tr)}.icon-btn:hover{background:var(--off);color:var(--text)}
+
+/* LAYOUT */
+.main{max-width:1320px;margin:0 auto;padding:18px 16px;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:18px 20px;box-shadow:var(--sh-sm)}
+.card-accent{border:2px solid var(--primary)}
+
+/* SETUP */
+.setup-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:11px;margin-top:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.flbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.fin{background:var(--off);border:1px solid var(--border);border-radius:var(--r-md);padding:6px 10px;font-size:var(--sm);font-weight:600;width:100%;transition:border-color var(--tr),background var(--tr)}
+.fin:focus{outline:none;border-color:var(--primary);background:var(--primary-hl)}
+.fin.estimated{border-style:dashed;color:var(--muted)}
+.dollar{position:relative}.dollar::before{content:'$';position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;font-weight:700;pointer-events:none}.dollar .fin{padding-left:20px}
+.pct{position:relative}.pct::after{content:'%';position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;font-weight:700;pointer-events:none}.pct .fin{padding-right:22px}
+.field-note{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.4}
+.field-note strong{color:var(--primary)}
+
+/* SECTION DIVIDER */
+.sec-div{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);display:flex;align-items:center;gap:8px}
+.sec-div::after{content:'';flex:1;height:1px;background:var(--divider)}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:var(--base);font-weight:700}
+.sec-sub{font-size:var(--xs);color:var(--muted);margin-top:1px}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+@media(max-width:720px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:13px 15px;box-shadow:var(--sh-sm)}
+.kpi-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.kpi-val{font-size:var(--xl);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums;line-height:1}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.badge{display:inline-flex;align-items:center;margin-top:5px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--r-full);border:1px solid}
+.b-ok{background:var(--ok-hl);color:var(--ok);border-color:var(--ok-bd)}
+.b-warn{background:var(--warn-hl);color:var(--warn);border-color:var(--warn-bd)}
+.b-err{background:var(--err-hl);color:var(--err);border-color:var(--err-bd)}
+.b-neutral{background:var(--off);color:var(--muted);border-color:var(--border)}
+.b-primary{background:var(--primary-hl);color:var(--primary);border-color:var(--primary)}
+.b-est{background:var(--off);color:var(--muted);border-color:var(--border);font-style:italic}
+
+/* WEEK TABS */
+.week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wtabs{display:flex;background:var(--off);border-radius:var(--r-lg);padding:3px;gap:3px}
+.wtab{padding:5px 14px;border-radius:calc(var(--r-lg) - 3px);font-size:var(--xs);font-weight:600;color:var(--muted);transition:all var(--tr);cursor:pointer;white-space:nowrap}
+.wtab.active{background:var(--surface);color:var(--text);box-shadow:var(--sh-sm)}
+.wtab:hover:not(.active){color:var(--text)}
+.date-badge{font-size:var(--xs);color:var(--muted);background:var(--off);padding:4px 10px;border-radius:var(--r-full);border:1px solid var(--border)}
+
+/* TRACKER TABLE */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tk-tbl{font-size:var(--xs);min-width:920px}
+.tk-tbl th{font-size:10px;color:var(--muted);font-weight:700;text-align:right;padding:5px 8px;border-bottom:2px solid var(--divider);white-space:nowrap;letter-spacing:.03em;text-transform:uppercase}
+.tk-tbl th:first-child,.tk-tbl td:first-child{text-align:left;padding-left:4px;min-width:135px}
+.tk-tbl td{padding:4px 8px;border-bottom:1px solid var(--divider);font-variant-numeric:tabular-nums lining-nums;white-space:nowrap;vertical-align:middle}
+.tk-tbl tr:last-child td{border-bottom:none}
+.section-row td{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:7px 4px 3px;border-top:1px solid var(--divider)}
+.totals-row td{font-weight:700;background:var(--off);border-top:2px solid var(--divider)!important}
+.cost-row td{font-size:10px;color:var(--muted)}
+.cell-in{background:none;border:1px solid transparent;border-radius:var(--r-sm);padding:2px 6px;width:90px;text-align:right;font-variant-numeric:tabular-nums;transition:border-color var(--tr),background var(--tr);font-size:var(--xs)}
+.cell-in:focus{outline:none;border-color:var(--primary);background:var(--primary-hl)}
+.wtot{font-weight:700;background:var(--primary-hl);color:var(--primary);padding:3px 8px;border-radius:var(--r-sm);font-variant-numeric:tabular-nums;display:inline-block;min-width:92px;text-align:right}
+.est-banner{margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.cost-chip{padding:4px 12px;border-radius:var(--r-full);font-size:var(--xs);font-weight:700;border:1px solid}
+.cc-ok{background:var(--ok-hl);color:var(--ok);border-color:var(--ok-bd)}
+.cc-warn{background:var(--warn-hl);color:var(--warn);border-color:var(--warn-bd)}
+.cc-err{background:var(--err-hl);color:var(--err);border-color:var(--err-bd)}
+.cc-neutral{background:var(--off);color:var(--muted);border-color:var(--border)}
+
+/* NOTES */
+.notes-area{width:100%;background:var(--off);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 10px;font-size:var(--xs);color:var(--text);resize:vertical;min-height:48px;transition:border-color var(--tr)}
+.notes-area:focus{outline:none;border-color:var(--primary)}
+
+/* PROJECTION */
+.proj-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.proj-icon{width:32px;height:32px;border-radius:var(--r-md);background:var(--primary-hl);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
+.proj-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:14px}
+@media(max-width:650px){.proj-cats{grid-template-columns:1fr}}
+.proj-cat{background:var(--off);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px}
+.proj-cat-name{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.prow{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--divider)}
+.prow:last-child{border-bottom:none}
+.prow-lbl{font-size:11px;color:var(--muted)}
+.prow-val{font-size:var(--xs);font-weight:700;font-variant-numeric:tabular-nums}
+.prow-val.g{color:var(--ok)}.prow-val.w{color:var(--warn)}.prow-val.e{color:var(--err)}.prow-val.p{color:var(--primary)}
+.highlight-row{border-top:2px solid var(--divider);margin-top:4px;padding-top:6px}
+
+/* ALERTS */
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{border-radius:var(--r-lg);padding:10px 13px;font-size:var(--xs);display:flex;align-items:flex-start;gap:9px;border:1px solid;line-height:1.5}
+.alert-icon{font-size:14px;line-height:1.3;flex-shrink:0}
+.a-ok{background:var(--ok-hl);color:var(--ok);border-color:var(--ok-bd)}
+.a-warn{background:var(--warn-hl);color:var(--warn);border-color:var(--warn-bd)}
+.a-err{background:var(--err-hl);color:var(--err);border-color:var(--err-bd)}
+.a-info{background:var(--blue-hl);color:var(--blue);border-color:var(--blue-bd)}
+.a-neutral{background:var(--off);color:var(--muted);border-color:var(--border)}
+
+/* PERIOD SUMMARY */
+.ps-tbl th{text-align:left;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;border-bottom:2px solid var(--divider)}
+.ps-tbl td{padding:7px 10px;border-bottom:1px solid var(--divider);font-variant-numeric:tabular-nums lining-nums;font-size:var(--xs)}
+.ps-tbl td:not(:first-child),.ps-tbl th:not(:first-child){text-align:right}
+.ps-tbl tr:last-child td{font-weight:700;background:var(--off);border-top:2px solid var(--divider);border-bottom:none}
+.est-tag{font-size:9px;font-style:italic;color:var(--faint);margin-left:3px}
+
+@media(max-width:600px){.main{padding:12px 10px}.topbar{padding:0 12px}.brand-sub{display:none}}
+
+/* ── Remove ALL number input spinners ── */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button { -webkit-appearance: none !important; margin: 0 !important; }
+input[type="number"],
+input[type="text"] { -moz-appearance: textfield !important; appearance: textfield !important; }
+
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-label="Fellow Bar">
+      <rect width="32" height="32" rx="8" fill="var(--primary)"/>
+      <path d="M10 24V14l6-6 6 6v10" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+      <rect x="13" y="18" width="6" height="6" rx="1" fill="#fff" opacity=".9"/>
+      <rect x="14" y="10" width="4" height="3" rx="1" fill="#fff" opacity=".6"/>
+    </svg>
+    <div>
+      <div class="brand-name">Fellow Bar — Period Tracker</div>
+      <div class="brand-sub">28-Day Purchase, Sales &amp; Inventory Forecaster · v4</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="save-indicator" style="font-size:11px;font-weight:600;color:var(--ok);opacity:0;transition:opacity 600ms ease;margin-right:4px">✓ Saved</span>
+    <button class="btn btn-ghost" onclick="exportCSV()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
+    <button class="btn btn-ghost" onclick="resetData()">Reset</button>
+    <button class="icon-btn" data-theme-toggle aria-label="Toggle dark mode">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- ── PERIOD SETUP ───────────────────────────────────────── -->
+  <div class="card">
+    <div class="sec-hdr">
+      <div>
+        <div class="sec-title">Period Setup</div>
+        <div class="sec-sub">Beginning inventory from MarginEdge at period open · Ending inventory entered at period close for true pour cost</div>
+      </div>
+    </div>
+
+    <div class="setup-grid">
+      <div class="field">
+        <label class="flbl" for="pName">Period Name</label>
+        <input class="fin" id="pName" type="text" placeholder="e.g. Period 5" oninput="render()">
+      </div>
+      <div class="field">
+        <label class="flbl" for="pStart">Period Start</label>
+        <input class="fin" id="pStart" type="date" oninput="render()">
+      </div>
+    </div>
+
+    <!-- BEGINNING INVENTORY -->
+    <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Beginning Inventory — from MarginEdge at period open</div>
+    <div class="setup-grid" style="margin-top:8px">
+      <div class="field">
+        <label class="flbl">Beer</label>
+        <div class="dollar"><input class="fin" id="begBeer" type="text" inputmode="decimal" placeholder="0.00" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Wine</label>
+        <div class="dollar"><input class="fin" id="begWine" type="text" inputmode="decimal" placeholder="0.00" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Liquor</label>
+        <div class="dollar"><input class="fin" id="begLiquor" type="text" inputmode="decimal" placeholder="0.00" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Total Beginning Inventory</label>
+        <div class="dollar">
+          <input class="fin" id="begTotal" type="text" inputmode="decimal" placeholder="Auto" oninput="render()">
+        </div>
+        <div class="field-note">Auto: <strong id="begTotalAuto">—</strong> · Override if needed</div>
+      </div>
+    </div>
+
+    <!-- ENDING INVENTORY -->
+    <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Ending Inventory — entered at period close from MarginEdge (locks true pour cost)</div>
+    <div class="setup-grid" style="margin-top:8px">
+      <div class="field">
+        <label class="flbl">Beer (Actual)</label>
+        <div class="dollar"><input class="fin" id="endBeer" type="text" inputmode="decimal" placeholder="Period close" oninput="render()"></div>
+        <div class="field-note">Leave blank until period closes</div>
+      </div>
+      <div class="field">
+        <label class="flbl">Wine (Actual)</label>
+        <div class="dollar"><input class="fin" id="endWine" type="text" inputmode="decimal" placeholder="Period close" oninput="render()"></div>
+        <div class="field-note">Leave blank until period closes</div>
+      </div>
+      <div class="field">
+        <label class="flbl">Liquor (Actual)</label>
+        <div class="dollar"><input class="fin" id="endLiquor" type="text" inputmode="decimal" placeholder="Period close" oninput="render()"></div>
+        <div class="field-note">Leave blank until period closes</div>
+      </div>
+      <div class="field">
+        <label class="flbl">Total Ending Inventory</label>
+        <div class="dollar">
+          <input class="fin" id="endTotal" type="text" inputmode="decimal" placeholder="Auto" oninput="render()">
+        </div>
+        <div class="field-note">Auto: <strong id="endTotalAuto">—</strong> · Override if needed</div>
+      </div>
+    </div>
+
+    <!-- TARGETS -->
+    <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Cost Targets</div>
+    <div class="setup-grid" style="margin-top:8px">
+      <div class="field">
+        <label class="flbl">Blended Target</label>
+        <div class="pct"><input class="fin" id="costTarget" type="text" inputmode="decimal" value="21.5" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Beer Target</label>
+        <div class="pct"><input class="fin" id="tgtBeer" type="text" inputmode="decimal" value="25" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Wine Target</label>
+        <div class="pct"><input class="fin" id="tgtWine" type="text" inputmode="decimal" value="33" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Liquor Target</label>
+        <div class="pct"><input class="fin" id="tgtLiquor" type="text" inputmode="decimal" value="20" oninput="render()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── KPI ROW ────────────────────────────────────────────── -->
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <!-- ── WEEK TABS ──────────────────────────────────────────── -->
+  <div class="week-nav">
+    <div class="wtabs" role="tablist">
+      <button class="wtab active" role="tab" id="wtab-1" onclick="setWeek(1)">Week 1</button>
+      <button class="wtab" role="tab" id="wtab-2" onclick="setWeek(2)">Week 2</button>
+      <button class="wtab" role="tab" id="wtab-3" onclick="setWeek(3)">Week 3</button>
+      <button class="wtab" role="tab" id="wtab-4" onclick="setWeek(4)">Week 4</button>
+    </div>
+    <span class="date-badge" id="wk-dates"></span>
+  </div>
+
+  <!-- ── WEEK PANEL ─────────────────────────────────────────── -->
+  <div id="week-panel"></div>
+
+  <!-- ── PROJECTION ─────────────────────────────────────────── -->
+  <div id="proj-section"></div>
+
+  <!-- ── PERIOD SUMMARY ────────────────────────────────────── -->
+  <div id="period-summary"></div>
+
+</main>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const PCATS = ['Beer','Wine','Liquor','Shamrock/Mutual'];
+const SCATS = ['Beer','Wine','Liquor'];
+
+let st = { week:1, p:{}, s:{}, notes:{} };
+for(let w=1;w<=4;w++){
+  st.p[w]={};st.s[w]={};st.notes[w]='';
+  PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
+  SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
+}
+
+// ─── PERSISTENCE ──────────────────────────────────────────────
+const STORAGE_KEY = 'fellowbar_tracker_v4';
+const SETUP_FIELDS = ['pName','pStart','begBeer','begWine','begLiquor','begTotal',
+                      'endBeer','endWine','endLiquor','endTotal',
+                      'costTarget','tgtBeer','tgtWine','tgtLiquor'];
+
+let _saveTimer = null;
+function flashSaved(){
+  const el = document.getElementById('save-indicator');
+  if(!el) return;
+  el.style.opacity = '1';
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => { el.style.opacity = '0'; }, 1500);
+}
+
+function saveState(){
+  const setup = {};
+  SETUP_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) setup[id] = el.value;
+  });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ st, setup }));
+    flashSaved();
+  } catch(e) {}
+}
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const saved = JSON.parse(raw);
+    // Restore setup fields
+    if(saved.setup){
+      SETUP_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if(el && saved.setup[id] !== undefined) el.value = saved.setup[id];
+      });
+    }
+    // Restore weekly data
+    if(saved.st){
+      st.week = saved.st.week || 1;
+      for(let w=1;w<=4;w++){
+        if(saved.st.p && saved.st.p[w]){
+          PCATS.forEach(c => { if(saved.st.p[w][c]) st.p[w][c] = saved.st.p[w][c]; });
+        }
+        if(saved.st.s && saved.st.s[w]){
+          SCATS.forEach(c => { if(saved.st.s[w][c]) st.s[w][c] = saved.st.s[w][c]; });
+        }
+        if(saved.st.notes && saved.st.notes[w] !== undefined) st.notes[w] = saved.st.notes[w];
+      }
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const parseNum=s=>{ if(!s&&s!==0)return NaN; const c=String(s).replace(/,/g,'').trim(); return parseFloat(c); };
+const gv=id=>{ const v=parseNum($(id).value); return isNaN(v)?0:v; };
+const gvNull=id=>{ const raw=$(id).value.trim(); if(raw===''||raw===null)return null; const v=parseNum(raw); return isNaN(v)?null:v; };
+const fd=(v,d=2)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fc=v=>'$'+fd(Math.abs(v));
+const fcs=v=>(v<0?'-':'')+fc(v);  // signed dollar
+const fp=v=>fd(v,2)+'%';
+
+function wkStart(w){
+  const d=new Date($('pStart').value+'T00:00:00');
+  d.setDate(d.getDate()+(w-1)*7);return d;
+}
+function wkRange(w){
+  const s=wkStart(w),e=new Date(s);e.setDate(e.getDate()+6);
+  const f=d=>(d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear().toString().slice(2);
+  return f(s)+' – '+f(e);
+}
+function dayHdr(w,i){
+  const d=new Date(wkStart(w));d.setDate(d.getDate()+i);
+  return DAYS[i]+'<br><span style="font-size:10px;color:var(--faint)">'+(d.getMonth()+1)+'/'+(d.getDate())+'</span>';
+}
+
+// Totals
+const wPurch=(w,c)=>st.p[w][c].reduce((a,b)=>a+b,0);
+const wSales=(w,c)=>st.s[w][c].reduce((a,b)=>a+b,0);
+const wTotP=w=>PCATS.reduce((s,c)=>s+wPurch(w,c),0);
+const wTotS=w=>SCATS.reduce((s,c)=>s+wSales(w,c),0);
+function periodPurch(thru,cat){let t=0;for(let w=1;w<=thru;w++)t+=wPurch(w,cat);return t;}
+function periodSales(thru,cat){let t=0;for(let w=1;w<=thru;w++)t+=wSales(w,cat);return t;}
+function hasData(w){return wTotP(w)+wTotS(w)>0;}
+function weeksEntered(){let n=0;for(let w=1;w<=4;w++)if(hasData(w))n=w;return n;}
+
+// ─── INVENTORY MATH ───────────────────────────────────────────
+// Per-category cost targets
+function catTgt(cat){
+  return cat==='Beer'?gv('tgtBeer'):cat==='Wine'?gv('tgtWine'):gv('tgtLiquor');
+}
+// Beginning inventory
+function begInv(cat){
+  return cat==='Beer'?gv('begBeer'):cat==='Wine'?gv('begWine'):gv('begLiquor');
+}
+// Total beginning inventory (override or auto-sum)
+function totalBegInv(){
+  const ov=gvNull('begTotal');
+  return ov!==null&&ov>0?ov:gv('begBeer')+gv('begWine')+gv('begLiquor');
+}
+// Actual ending inventory (null if not entered)
+function endInvActual(cat){
+  return cat==='Beer'?gvNull('endBeer'):cat==='Wine'?gvNull('endWine'):gvNull('endLiquor');
+}
+function hasActualEnding(){
+  return gvNull('endBeer')!==null||gvNull('endWine')!==null||gvNull('endLiquor')!==null;
+}
+
+// ── CORE CALCULATION PER CATEGORY ──────────────────────────────
+// thruWeek: 1-4, which weeks to include
+// Returns: { beg, purch, sales, estEnding, actualEnding, endingUsed, isEstimated,
+//            periodCostPct, adjPourCost, adjPourCostIsEst, drift }
+//
+// PURCHASES for Liquor include Shamrock/Mutual (cost purposes only, not inv.)
+// ESTIMATED ending = beg + purchases - (sales × cat cost target %)
+//   → inventory only moves at cost, not at revenue
+// ADJUSTED pour cost = (beg + purchases - ending) / sales
+//   → when estimated: uses estEnding  → labeled as estimated
+//   → when actual ending entered: uses actual → locked true pour cost
+function catCalc(cat, thru){
+  const beg = begInv(cat);
+  // Physical purchases (for inventory tracking, no Shamrock)
+  const physPurch = periodPurch(thru, cat);
+  // Total cost purchases (Shamrock rolls into Liquor for cost)
+  const costPurch = physPurch + (cat==='Liquor' ? periodPurch(thru,'Shamrock/Mutual') : 0);
+  const sales = periodSales(thru, cat);
+  const tgt = catTgt(cat) / 100;
+
+  // Estimated ending inventory:
+  // inventory decreases at cost %, not at revenue
+  const estEnding = beg + physPurch - (sales * tgt);
+
+  // Actual ending (if entered)
+  const actualEnding = endInvActual(cat);
+  const endingUsed = (actualEnding !== null) ? actualEnding : estEnding;
+  const isEstimated = (actualEnding === null);
+
+  // Period cost % = raw purchases / sales (no inventory adjustment)
+  const periodCostPct = sales > 0 ? (costPurch / sales) * 100 : null;
+
+  // Adjusted pour cost = (beg + costPurch - ending) / sales
+  // This is the TRUE cost accounting for inventory movement
+  const adjPourCost = sales > 0 ? ((beg + costPurch - endingUsed) / sales) * 100 : null;
+
+  const drift = endingUsed - beg;
+
+  return {
+    beg, physPurch, costPurch, sales,
+    estEnding, actualEnding, endingUsed, isEstimated,
+    periodCostPct, adjPourCost, adjPourCostIsEst: isEstimated,
+    drift
+  };
+}
+
+// ─── WEEK RENDERER ────────────────────────────────────────────
+function renderWeek(w){
+  const dayHdrs = DAYS.map((_,i)=>`<th>${dayHdr(w,i)}</th>`).join('');
+
+  // Purchase rows
+  let pRows='';
+  PCATS.forEach(cat=>{
+    const cells=st.p[w][cat].map((v,i)=>`
+      <td><input class="cell-in" type="text" inputmode="decimal"
+        value="${v>0?fd(v,2):''}" placeholder="—"
+        onchange="setVal('p',${w},'${cat}',${i},this.value)"
+        onfocus="this.select()"></td>`).join('');
+    const tot=wPurch(w,cat);
+    pRows+=`<tr><td style="font-weight:600;padding-left:10px">${cat}</td>${cells}
+      <td style="text-align:right"><span class="wtot">${tot>0?fc(tot):'—'}</span></td></tr>`;
+  });
+
+  const tpCells=Array(7).fill(0).map((_,i)=>{
+    const v=PCATS.reduce((s,c)=>s+st.p[w][c][i],0);
+    return`<td style="font-weight:700;text-align:right">${v>0?fc(v):'—'}</td>`;
+  }).join('');
+
+  // Sales rows
+  let sRows='';
+  SCATS.forEach(cat=>{
+    const cells=st.s[w][cat].map((v,i)=>`
+      <td><input class="cell-in" type="text" inputmode="decimal"
+        value="${v>0?fd(v,2):''}" placeholder="—"
+        onchange="setVal('s',${w},'${cat}',${i},this.value)"
+        onfocus="this.select()"></td>`).join('');
+    const tot=wSales(w,cat);
+    sRows+=`<tr><td style="font-weight:600;padding-left:10px">${cat}</td>${cells}
+      <td style="text-align:right"><span class="wtot">${tot>0?fc(tot):'—'}</span></td></tr>`;
+  });
+
+  const tsCells=Array(7).fill(0).map((_,i)=>{
+    const v=SCATS.reduce((s,c)=>s+st.s[w][c][i],0);
+    return`<td style="font-weight:700;text-align:right">${v>0?fc(v):'—'}</td>`;
+  }).join('');
+
+  // Daily cost % rows
+  const costRows=SCATS.map(cat=>{
+    const dayCells=Array(7).fill(0).map((_,i)=>{
+      const p=st.p[w][cat][i]+(cat==='Liquor'?st.p[w]['Shamrock/Mutual'][i]:0);
+      const s=st.s[w][cat][i];
+      if(s===0)return`<td style="color:var(--faint);text-align:right">—</td>`;
+      const c=(p/s)*100, t=catTgt(cat);
+      const col=c<=t?'var(--ok)':c<=t*1.15?'var(--warn)':'var(--err)';
+      return`<td style="color:${col};font-weight:700;text-align:right">${fp(c)}</td>`;
+    }).join('');
+    const wp=wPurch(w,cat)+(cat==='Liquor'?wPurch(w,'Shamrock/Mutual'):0);
+    const ws=wSales(w,cat);
+    const wc=ws>0?(wp/ws)*100:null;
+    const t=catTgt(cat);
+    const wcol=wc===null?'var(--faint)':wc<=t?'var(--ok)':wc<=t*1.15?'var(--warn)':'var(--err)';
+    return`<tr class="cost-row"><td style="padding-left:10px;color:var(--muted)">${cat} Cost %</td>
+      ${dayCells}
+      <td style="text-align:right;font-weight:700;color:${wcol}">${wc!==null?fp(wc):'—'}</td></tr>`;
+  }).join('');
+
+  const tpW=wTotP(w),tsW=wTotS(w);
+  const estC=tsW>0?(tpW/tsW)*100:null;
+  const tgt=gv('costTarget');
+  const cc=estC===null?'cc-neutral':estC<=tgt?'cc-ok':estC<=tgt*1.1?'cc-warn':'cc-err';
+
+  return`<div class="card">
+    <div class="sec-hdr">
+      <div><div class="sec-title">Week ${w} — Daily Tracker</div>
+        <div class="sec-sub">${wkRange(w)} &nbsp;·&nbsp; Enter purchases and sales as they occur</div></div>
+    </div>
+    <div class="tbl-wrap"><table class="tk-tbl">
+      <thead><tr>
+        <th style="text-align:left;min-width:135px"></th>${dayHdrs}
+        <th style="text-align:right;min-width:100px">Weekly Total</th>
+      </tr></thead>
+      <tbody>
+        <tr class="section-row"><td colspan="9">— Purchases —</td></tr>
+        ${pRows}
+        <tr class="totals-row"><td style="font-weight:700">TOTAL PURCHASES</td>${tpCells}
+          <td style="text-align:right"><span class="wtot">${tpW>0?fc(tpW):'—'}</span></td></tr>
+        <tr class="section-row"><td colspan="9">— Sales (Less Discounts) —</td></tr>
+        ${sRows}
+        <tr class="totals-row"><td style="font-weight:700">TOTAL SALES</td>${tsCells}
+          <td style="text-align:right"><span class="wtot">${tsW>0?fc(tsW):'—'}</span></td></tr>
+        <tr class="section-row"><td colspan="9">— Daily Cost % by Category —</td></tr>
+        ${costRows}
+      </tbody>
+    </table></div>
+    <div class="est-banner">
+      <div style="flex:1;min-width:240px;margin-top:6px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Week ${w} Notes</div>
+        <textarea class="notes-area" placeholder="e.g. Big event Friday drove Liquor spike, short-staffed Tuesday..."
+          onchange="st.notes[${w}]=this.value">${st.notes[w]||''}</textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-top:6px">
+        <span style="font-size:10px;color:var(--muted)">Week ${w} raw purchase cost:</span>
+        <span class="cost-chip ${cc}">${estC!==null?fp(estC)+' (purchases ÷ sales)':'No data yet'}</span>
+        <span style="font-size:10px;color:var(--faint);font-style:italic">True pour cost calculated at period close</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── KPI ROW ──────────────────────────────────────────────────
+function renderKPIs(){
+  const we=weeksEntered()||1;
+  let totP=0,totS=0;
+  for(let w=1;w<=4;w++){totP+=wTotP(w);totS+=wTotS(w);}
+
+  // Blended adj pour cost using chosen ending (actual or estimated)
+  let adjP=0,adjS=0;
+  SCATS.forEach(c=>{
+    const r=catCalc(c,4);
+    // adjPourCost = (beg + costPurch - ending) / sales
+    // Reconstruct numerator: beg + costPurch - ending
+    if(r.sales>0){
+      adjP+=(r.beg+r.costPurch-r.endingUsed);
+      adjS+=r.sales;
+    }
+  });
+  const adjCost=adjS>0?(adjP/adjS)*100:null;
+  const tgt=gv('costTarget');
+  const isEst=!hasActualEnding();
+
+  // Total inventory drift
+  let totBeg=totalBegInv(),totEnd=0;
+  SCATS.forEach(c=>{totEnd+=catCalc(c,4).endingUsed;});
+  const drift=totEnd-totBeg;
+
+  // Update auto total display
+  $('begTotalAuto').textContent=fc(gv('begBeer')+gv('begWine')+gv('begLiquor'));
+  // Update ending total auto display
+  const _eB=gvNull('endBeer'),_eW=gvNull('endWine'),_eL=gvNull('endLiquor');
+  const _endSum=[_eB,_eW,_eL].filter(v=>v!==null).reduce((a,b)=>a+b,0);
+  const _endEl=$('endTotalAuto');
+  if(_endEl){
+    const _anyEnd=_eB!==null||_eW!==null||_eL!==null;
+    _endEl.textContent=_anyEnd?fc(_endSum):'—';
+  }
+
+  const kpis=[
+    {lbl:'Period Purchases',val:fc(totP),sub:'All weeks combined',badge:'Running total',bc:'b-neutral'},
+    {lbl:'Period Sales',val:fc(totS),sub:'All weeks combined',badge:'Running total',bc:'b-neutral'},
+    {lbl:'Adj. Pour Cost'+(isEst?' (Est.)':''),
+      val:adjCost!==null?fp(adjCost):'—',
+      sub:isEst?'Est. via cost targets · Locks at period close':`Target: ${fp(tgt)} · Actual ending used`,
+      badge:adjCost===null?'No data yet':isEst?'Estimated — enter ending inv. to lock':adjCost<=tgt?'On target ✓':adjCost<=tgt*1.08?'Slightly over':'Over target',
+      bc:adjCost===null||isEst?'b-est':adjCost<=tgt?'b-ok':adjCost<=tgt*1.08?'b-warn':'b-err'},
+    {lbl:'Inventory Drift'+(isEst?' (Est.)':''),
+      val:(drift>=0?'+':'')+fcs(drift),
+      sub:`Opening: ${fc(totBeg)}${isEst?' · Est. ending at cost targets':'· Actual ending used'}`,
+      badge:Math.abs(drift)<200?'Balanced ✓':drift>0?'Building — watch next period':'Drawing down — verify intent',
+      bc:Math.abs(drift)<200?'b-ok':'b-warn'}
+  ];
+
+  $('kpi-row').innerHTML=kpis.map(k=>`
+    <div class="kpi">
+      <div class="kpi-lbl">${k.lbl}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+      <span class="badge ${k.bc}">${k.badge}</span>
+    </div>`).join('');
+}
+
+// ─── PROJECTION ENGINE ────────────────────────────────────────
+function renderProjection(){
+  const el=$('proj-section');
+  const we=weeksEntered();
+  if(we===0){
+    el.innerHTML=`<div class="sec-div">PROJECTION ENGINE</div>
+      <div class="card"><p style="text-align:center;padding:20px;color:var(--muted);font-size:var(--xs)">Enter Week 1 purchases and sales to unlock the projection engine.</p></div>`;
+    return;
+  }
+  const tgt=gv('costTarget');
+  const weeksLeft=4-we;
+
+  // Velocity from all entered weeks (rolling re-baseline)
+  const vel={};
+  SCATS.forEach(cat=>{
+    const p=periodPurch(we,cat)+(cat==='Liquor'?periodPurch(we,'Shamrock/Mutual'):0);
+    const s=periodSales(we,cat);
+    vel[cat]={avgP:p/we,avgS:s/we};
+  });
+
+  // Per-category projection
+  const cats={};
+  SCATS.forEach(cat=>{
+    const r=catCalc(cat,we);
+    const beg=r.beg;
+    // Current estimated inventory using data through entered weeks
+    const curInv=r.endingUsed; // uses estimated ending (no actual mid-period)
+    const drift=curInv-beg;
+
+    // To return inventory to beginning by period end:
+    // Over remaining weeks: total purchases = total sales at cost + inventory correction
+    // Projected sales remaining = velocity × weeks left
+    const projSalesTotal=vel[cat].avgS*weeksLeft;
+    // To hold flat: purch = sales × cost target %
+    // To correct drift: subtract drift spread over remaining weeks
+    const projPurchToHoldFlat=projSalesTotal*(catTgt(cat)/100);
+    // Correction: we need ending = beg, so: curInv + projPurch - projSalesAtCost = beg
+    // projPurch = beg - curInv + projSalesAtCost
+    const projPurchTotal=Math.max(0,(beg-curInv)+projPurchToHoldFlat);
+    const projPurchPW=weeksLeft>0?projPurchTotal/weeksLeft:0;
+    const projSalesPW=vel[cat].avgS;
+    // Projected ending after correction
+    const projEnding=curInv+projPurchTotal-(projSalesTotal*(catTgt(cat)/100));
+
+    cats[cat]={beg,curInv,drift,projPurchPW,projSalesPW,projEnding,
+      velocity:vel[cat],weeksIn:we,weeksLeft,
+      isEstInv:r.isEstimated};
+  });
+
+  const remWeeks=[];
+  for(let w=we+1;w<=4;w++)remWeeks.push(w);
+
+  // Cat cards
+  const catCards=SCATS.map(cat=>{
+    const d=cats[cat];
+    const driftAmt=Math.abs(d.drift);
+    const driftStr=driftAmt<50?'Flat — no adjustment needed'
+      :d.drift>0?`+${fc(d.drift)} above opening — reducing purchases`
+      :`-${fc(driftAmt)} below opening — adding purchases`;
+    const driftCls=driftAmt<200?'g':'w';
+    const estTag=d.isEstInv?'<span style="font-size:9px;font-style:italic;color:var(--faint)"> est.</span>':'';
+    return`<div class="proj-cat">
+      <div class="proj-cat-name">${cat}${estTag}</div>
+      <div class="prow"><span class="prow-lbl">Avg sales/wk (${d.weeksIn}wk baseline)</span><span class="prow-val">${fc(d.velocity.avgS)}</span></div>
+      <div class="prow"><span class="prow-lbl">Avg purchases/wk</span><span class="prow-val">${fc(d.velocity.avgP)}</span></div>
+      <div class="prow"><span class="prow-lbl">Est. current inventory</span><span class="prow-val ${driftCls}">${fc(d.curInv)}</span></div>
+      <div class="prow"><span class="prow-lbl">Drift vs. opening</span><span class="prow-val ${driftCls}">${driftStr}</span></div>
+      ${remWeeks.length>0?`
+      <div class="prow highlight-row">
+        <span class="prow-lbl" style="font-weight:700;color:var(--text)">Target purch/wk (W${remWeeks.join('+W')})</span>
+        <span class="prow-val p" style="font-size:var(--sm)">${fc(d.projPurchPW)}</span>
+      </div>
+      <div class="prow">
+        <span class="prow-lbl" style="font-weight:700;color:var(--text)">Target sales/wk</span>
+        <span class="prow-val p" style="font-size:var(--sm)">${fc(d.projSalesPW)}</span>
+      </div>
+      <div class="prow">
+        <span class="prow-lbl">Proj. end inv. (target: ${fc(d.beg)})</span>
+        <span class="prow-val g">${fc(d.projEnding)}</span>
+      </div>`:'<div class="prow highlight-row"><span class="prow-lbl">Period complete</span><span class="prow-val g">✓</span></div>'}
+    </div>`;
+  }).join('');
+
+  // Weekly target table
+  const wkRows=remWeeks.map(w=>{
+    const tP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
+    const tS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
+    const pc=tS>0?(tP/tS)*100:0;
+    const pcCol=pc<=tgt?'var(--ok)':pc<=tgt*1.1?'var(--warn)':'var(--err)';
+    return`<tr>
+      <td style="font-weight:700">Week ${w} Target</td>
+      <td style="text-align:right">${fc(cats['Beer'].projPurchPW)}</td>
+      <td style="text-align:right">${fc(cats['Wine'].projPurchPW)}</td>
+      <td style="text-align:right">${fc(cats['Liquor'].projPurchPW)}</td>
+      <td style="text-align:right;font-weight:700">${fc(tP)}</td>
+      <td style="text-align:right">${fc(cats['Beer'].projSalesPW)}</td>
+      <td style="text-align:right">${fc(cats['Wine'].projSalesPW)}</td>
+      <td style="text-align:right">${fc(cats['Liquor'].projSalesPW)}</td>
+      <td style="text-align:right;font-weight:700">${fc(tS)}</td>
+      <td style="text-align:right;font-weight:700;color:${pcCol}">${fp(pc)}</td>
+    </tr>`;
+  }).join('');
+
+  const alerts=buildAlerts(cats,we,tgt,remWeeks);
+
+  el.innerHTML=`
+  <div class="sec-div">PROJECTION ENGINE — Rolling baseline W${we===1?'1':'1–'+we} · Re-calculates each week · Inventory estimated at cost targets</div>
+  <div class="card card-accent">
+    <div class="proj-hdr">
+      <div class="proj-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <div>
+        <div class="sec-title">Period Forecast${remWeeks.length>0?' — Week'+(remWeeks.length>1?'s ':' ')+remWeeks.join(' & ')+' Targets':' — Period Complete'}</div>
+        <div class="sec-sub">Targets to return ending inventory ≈ beginning · Baseline updates each week entered · Estimated inv. uses per-category cost targets</div>
+      </div>
+    </div>
+    <div class="proj-cats">${catCards}</div>
+    ${remWeeks.length>0?`
+    <div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title" style="font-size:var(--base)">Weekly Purchase &amp; Sales Targets</div></div>
+    <div style="overflow-x:auto"><table class="tk-tbl" style="min-width:720px">
+      <thead><tr>
+        <th style="text-align:left">Week</th>
+        <th>Beer Purch</th><th>Wine Purch</th><th>Liq Purch</th><th>Total Purch</th>
+        <th>Beer Sales</th><th>Wine Sales</th><th>Liq Sales</th><th>Total Sales</th>
+        <th>Proj Cost%</th>
+      </tr></thead>
+      <tbody>${wkRows}</tbody>
+    </table></div>`
+    :`<div class="alert a-ok"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div>`}
+    <div style="margin-top:14px">
+      <div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title" style="font-size:var(--base)">⚡ What You Need to Know</div></div>
+      <div class="alerts">${alerts}</div>
+    </div>
+  </div>`;
+}
+
+function buildAlerts(cats,we,tgt,remWeeks){
+  const alerts=[];
+
+  // Per-category inventory drift alerts (±$200 threshold)
+  let anyDrift=false;
+  SCATS.forEach(cat=>{
+    const d=cats[cat];
+    if(Math.abs(d.drift)>200){
+      anyDrift=true;
+      if(d.drift>0){
+        alerts.push({t:'warn',i:'📦',
+          msg:`<strong>${cat} is stacking up — +${fc(d.drift)} above opening.</strong> Ease up on ${cat.toLowerCase()} orders. The targets below already correct for this.`});
+      } else {
+        alerts.push({t:'warn',i:'📉',
+          msg:`<strong>${cat} is running low — ${fc(Math.abs(d.drift))} below opening.</strong> Bump up ${cat.toLowerCase()} orders this week. Targets below have been adjusted.`});
+      }
+    }
+  });
+  if(!anyDrift){
+    alerts.push({t:'ok',i:'✅',
+      msg:`<strong>Inventory is balanced.</strong> All categories within $200 of opening — keep your current ordering pace.`});
+  }
+
+  // Projected pour cost
+  if(remWeeks.length>0){
+    const tP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0)*remWeeks.length;
+    const tS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0)*remWeeks.length;
+    let actP=0,actS=0;
+    SCATS.forEach(c=>{const r=catCalc(c,we);actP+=r.costPurch;actS+=r.sales;});
+    const projTotS=actS+tS;
+    let projBeg=0,projTotP=0,projEndTot=0;
+    SCATS.forEach(c=>{
+      projBeg+=cats[c].beg;
+      projTotP+=(periodPurch(we,c)+(c==='Liquor'?periodPurch(we,'Shamrock/Mutual'):0))+cats[c].projPurchPW*remWeeks.length;
+      projEndTot+=cats[c].projEnding;
+    });
+    const projAdj=projTotS>0?((projBeg+projTotP-projEndTot)/projTotS)*100:null;
+    if(projAdj!==null){
+      const delta=projAdj-tgt;
+      const onTrack=projAdj<=tgt;
+      const slightlyOver=!onTrack&&projAdj<=tgt*1.08;
+      alerts.push({t:onTrack?'ok':slightlyOver?'warn':'err',i:onTrack?'🎯':'💸',
+        msg:onTrack
+          ?`<strong>Pour cost on track — projecting ${fp(projAdj)}</strong> vs. ${fp(tgt)} target. You're good, keep it up.`
+          :`<strong>Pour cost projecting ${fp(projAdj)}</strong> — ${fp(Math.abs(delta))} over the ${fp(tgt)} target. ${slightlyOver?'Trim orders or push sales to close the gap.':'Check your biggest spend category — something\'s off. Tighten up orders.'} <em>(Estimate until period close.)</em>`
+      });
+    }
+  }
+
+  // Weekly targets — one combined card
+  if(remWeeks.length>0){
+    const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
+    const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
+    alerts.push({t:'info',i:'🛒',
+      msg:`<strong>Order this week: ${fc(wP)}</strong> &nbsp;→&nbsp; Beer ${fc(cats['Beer'].projPurchPW)} · Wine ${fc(cats['Wine'].projPurchPW)} · Liquor ${fc(cats['Liquor'].projPurchPW)}`});
+    alerts.push({t:'info',i:'💰',
+      msg:`<strong>Sales target this week: ${fc(wS)}</strong> &nbsp;→&nbsp; Beer ${fc(cats['Beer'].projSalesPW)} · Wine ${fc(cats['Wine'].projSalesPW)} · Liquor ${fc(cats['Liquor'].projSalesPW)}`});
+  }
+
+  return alerts.map(a=>`<div class="alert a-${a.t}"><span class="alert-icon">${a.i}</span><span>${a.msg}</span></div>`).join('');
+}
+
+// ─── PERIOD SUMMARY ───────────────────────────────────────────
+function renderPeriodSummary(){
+  const isEst=!hasActualEnding();
+  const rows=SCATS.map(cat=>{
+    const r=catCalc(cat,4);
+    const diff=r.endingUsed-r.beg;
+    const driftCls=Math.abs(diff)<200?'':diff>0?'drift-up':'drift-dn';
+    const tgtCat=catTgt(cat);
+    const adjCol=r.adjPourCost===null?'var(--muted)'
+      :r.adjPourCost<=tgtCat?'var(--ok)'
+      :r.adjPourCost<=tgtCat*1.1?'var(--warn)':'var(--err)';
+    const estSuffix=r.isEstimated?'<span class="est-tag">est.</span>':'';
+    return`<tr>
+      <td style="font-weight:700">${cat}</td>
+      <td>${fc(r.beg)}</td>
+      <td>${fc(r.endingUsed)}${estSuffix}</td>
+      <td class="${driftCls}">${diff>=0?'+':''}${fcs(diff)}${estSuffix}</td>
+      <td>${r.costPurch>0?fc(r.costPurch):'—'}</td>
+      <td>${r.sales>0?fc(r.sales):'—'}</td>
+      <td>${r.periodCostPct!==null?fp(r.periodCostPct):'—'}</td>
+      <td style="font-weight:700;color:${adjCol}">${r.adjPourCost!==null?fp(r.adjPourCost)+''+estSuffix:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  let tBeg=totalBegInv(),tEnd=0,tCP=0,tS=0,tAdjNum=0;
+  SCATS.forEach(c=>{
+    const r=catCalc(c,4);
+    tEnd+=r.endingUsed;tCP+=r.costPurch;tS+=r.sales;
+    if(r.sales>0)tAdjNum+=(r.beg+r.costPurch-r.endingUsed);
+  });
+  const tDiff=tEnd-tBeg;
+  const tAdj=tS>0?(tAdjNum/tS)*100:null;
+  const bTgt=gv('costTarget');
+  const tAdjCol=tAdj===null?'var(--muted)':tAdj<=bTgt?'var(--ok)':tAdj<=bTgt*1.08?'var(--warn)':'var(--err)';
+  const tDriftCls=Math.abs(tDiff)<200?'':tDiff>0?'drift-up':'drift-dn';
+
+  $('period-summary').innerHTML=`
+  <div class="sec-div">PERIOD SUMMARY${isEst?' — Estimated (Enter ending inventory to lock true pour cost)':' — Actual ending inventory entered'}</div>
+  <div class="card">
+    <div class="sec-hdr">
+      <div><div class="sec-title">Period Inventory &amp; Cost Summary</div>
+        <div class="sec-sub">${isEst
+          ?'Ending inventory estimated using per-category cost targets · Enter actual ending inventory in Period Setup at period close to lock true pour cost'
+          :'Actual ending inventory entered — adjusted pour cost is your true period result'
+        }</div></div>
+    </div>
+    <div style="overflow-x:auto"><table class="ps-tbl" style="min-width:660px">
+      <thead><tr>
+        <th>Category</th><th>Beginning Inv.</th>
+        <th>Ending Inv. ${isEst?'(Est.)':'(Actual)'}</th>
+        <th>Difference</th><th>Purchases</th><th>Sales</th>
+        <th>Period Cost %</th><th>Adj. Pour Cost % ←</th>
+      </tr></thead>
+      <tbody>
+        ${rows}
+        <tr>
+          <td>TOTALS</td>
+          <td>${fc(tBeg)}</td>
+          <td>${fc(tEnd)}${isEst?'<span class="est-tag">est.</span>':''}</td>
+          <td class="${tDriftCls}">${tDiff>=0?'+':''}${fcs(tDiff)}${isEst?'<span class="est-tag">est.</span>':''}</td>
+          <td>${tCP>0?fc(tCP):'—'}</td>
+          <td>${tS>0?fc(tS):'—'}</td>
+          <td>${tS>0?fp((tCP/tS)*100):'—'}</td>
+          <td style="font-weight:700;color:${tAdjCol}">${tAdj!==null?fp(tAdj)+(isEst?' est.':'')+'  ← POUR COST':'—'}</td>
+        </tr>
+      </tbody>
+    </table></div>
+    <div style="margin-top:10px;font-size:10px;color:var(--muted);line-height:1.6;padding:10px;background:var(--off);border-radius:var(--r-md)">
+      <strong>How the math works:</strong> &nbsp;
+      <strong>Period Cost %</strong> = purchases ÷ sales (raw, no inventory adjustment).
+      <strong>Adj. Pour Cost</strong> = (beginning + purchases − ending) ÷ sales — your true cost accounting for inventory movement.
+      Mid-period, ending inventory is <em>estimated</em> as: beginning + purchases − (sales × category cost target %).
+      At period close, enter actual ending inventory from MarginEdge to replace estimates with your true numbers.
+      <strong>Goal: keep Difference within ±$200 per category to avoid large swings into the next period.</strong>
+    </div>
+  </div>`;
+}
+
+// ─── MAIN RENDER ──────────────────────────────────────────────
+function render(){
+  $('wk-dates').textContent=wkRange(st.week);
+  $('week-panel').innerHTML=renderWeek(st.week);
+  renderKPIs();
+  renderProjection();
+  renderPeriodSummary();
+  saveState();
+}
+function setWeek(w){
+  st.week=w;
+  document.querySelectorAll('.wtab').forEach((t,i)=>t.classList.toggle('active',i+1===w));
+  render();
+}
+function setVal(type,week,cat,day,val){
+  const v=Math.max(0,parseNum(val)||0);
+  if(type==='p')st.p[week][cat][day]=v;
+  else st.s[week][cat][day]=v;
+  render();
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────
+function exportCSV(){
+  const pn=$('pName').value;
+  const lines=[[pn+' — Fellow Bar Period Tracker v3'],['Exported',new Date().toLocaleDateString()],[]];
+  lines.push(['PERIOD SUMMARY']);
+  lines.push(['Category','Beg Inv','Ending Inv','Est?','Difference','Purchases','Sales','Period Cost%','Adj Pour Cost%']);
+  SCATS.forEach(c=>{
+    const r=catCalc(c,4);const diff=r.endingUsed-r.beg;
+    lines.push([c,r.beg.toFixed(2),r.endingUsed.toFixed(2),r.isEstimated?'Estimated':'Actual',
+      (diff>=0?'+':'')+diff.toFixed(2),r.costPurch.toFixed(2),r.sales.toFixed(2),
+      r.periodCostPct!==null?fp(r.periodCostPct):'',r.adjPourCost!==null?fp(r.adjPourCost):'']);
+  });
+  lines.push([]);
+  for(let w=1;w<=4;w++){
+    lines.push([`WEEK ${w} — ${wkRange(w)}`,...DAYS,'Weekly Total']);
+    PCATS.forEach(c=>{lines.push(['PURCH '+c,...st.p[w][c],wPurch(w,c).toFixed(2)]);});
+    lines.push(['TOTAL PURCHASES',...Array(7).fill(''),wTotP(w).toFixed(2)]);
+    SCATS.forEach(c=>{lines.push(['SALES '+c,...st.s[w][c],wSales(w,c).toFixed(2)]);});
+    lines.push(['TOTAL SALES',...Array(7).fill(''),wTotS(w).toFixed(2)]);
+    if(st.notes[w])lines.push(['Notes',st.notes[w]]);
+    lines.push([]);
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([lines.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
+  a.download=pn.replace(/\s+/g,'-')+'-v4.csv';a.click();
+}
+function resetData(){
+  if(!confirm('Clear ALL data including setup fields? This cannot be undone.'))return;
+  // Clear weekly data
+  for(let w=1;w<=4;w++){
+    PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
+    SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
+    st.notes[w]='';
+  }
+  // Clear setup fields
+  SETUP_FIELDS.forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  // Wipe localStorage
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  st.week=1;
+  setWeek(1);
+}
+
+// ─── DARK MODE ────────────────────────────────────────────────
+(function(){
+  const t=document.querySelector('[data-theme-toggle]');
+  const r=document.documentElement;
+  let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  r.setAttribute('data-theme',d);
+  if(t)t.addEventListener('click',()=>{
+    d=d==='dark'?'light':'dark';r.setAttribute('data-theme',d);
+    t.innerHTML=d==='dark'
+      ?'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+      :'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  });
+})();
+
+// ─── INIT ─────────────────────────────────────────────────────
+loadState();
+// Restore active week tab to match loaded state
+document.querySelectorAll('.wtab').forEach((t,i)=>t.classList.toggle('active',i+1===st.week));
+render();
+</script>
+</body>
+</html>
