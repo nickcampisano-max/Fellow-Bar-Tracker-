@@ -311,6 +311,30 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
 </main>
 
 <script>
+// ─── HISTORICAL DATA (Last Year — Fellow Bar FO) ──────────────
+// Per-period bar sales (Beer + Wine + Liquor) and cost %
+// Used for seasonality context and early-period velocity blending
+const HISTORY_LY = {
+  1:  { Beer: 2684.00,  Wine: 12742.00, Liquor: 24246.79, Total: 39672.79, costPct: 22.21 },
+  2:  { Beer: 3494.00,  Wine: 16665.00, Liquor: 31992.50, Total: 52151.50, costPct: 20.34 },
+  3:  { Beer: 3958.00,  Wine: 18253.00, Liquor: 33342.00, Total: 55553.00, costPct: 21.68 },
+  4:  { Beer: 3722.00,  Wine: 17831.00, Liquor: 30164.25, Total: 51717.25, costPct: 19.59 },
+  5:  { Beer: 3254.00,  Wine: 15039.01, Liquor: 33033.75, Total: 51326.76, costPct: 21.65 },
+  6:  { Beer: 2638.00,  Wine: 13696.97, Liquor: 26933.49, Total: 43268.46, costPct: 23.04 },
+  7:  { Beer: 2800.00,  Wine:  9836.00, Liquor: 20028.50, Total: 32664.50, costPct: 23.44 },
+  8:  { Beer: 3024.00,  Wine:  9894.01, Liquor: 19327.50, Total: 32245.51, costPct: 22.80 },
+  9:  { Beer: 2448.00,  Wine: 10557.00, Liquor: 21057.02, Total: 34062.02, costPct: 22.87 },
+  10: { Beer: 2344.00,  Wine:  9531.00, Liquor: 19582.00, Total: 31457.00, costPct: 22.66 },
+  11: { Beer: 3230.00,  Wine: 13315.00, Liquor: 20960.50, Total: 37505.50, costPct: 22.29 },
+  12: { Beer: 3074.99,  Wine: 12936.98, Liquor: 26760.25, Total: 42772.22, costPct: 21.98 },
+  13: { Beer: 2746.00,  Wine: 14811.00, Liquor: 22982.11, Total: 40539.11, costPct: 20.70 },
+};
+// Parse period number from period name field (e.g. "Period 6" → 6)
+function getPeriodNum(){
+  const m=$('pName').value.match(/\d+/);
+  return m?parseInt(m[0]):null;
+}
+
 // ─── STATE ────────────────────────────────────────────────────
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Shamrock/Mutual'];
@@ -412,6 +436,18 @@ function periodPurch(thru,cat){let t=0;for(let w=1;w<=thru;w++)t+=wPurch(w,cat);
 function periodSales(thru,cat){let t=0;for(let w=1;w<=thru;w++)t+=wSales(w,cat);return t;}
 function hasData(w){return wTotP(w)+wTotS(w)>0;}
 function weeksEntered(){let n=0;for(let w=1;w<=4;w++)if(hasData(w))n=w;return n;}
+// A week is "complete" if it has any Sunday data (sales or purchases)
+function isWeekComplete(w){
+  const sundaySales=SCATS.reduce((sum,c)=>sum+st.s[w][c][6],0);
+  const sundayPurch=PCATS.reduce((sum,c)=>sum+st.p[w][c][6],0);
+  return (sundaySales+sundayPurch)>0;
+}
+// Weeks to use for velocity — only fully complete weeks
+function velWeeksCount(){
+  const we=weeksEntered();
+  if(we===0)return 0;
+  return isWeekComplete(we)?we:Math.max(1,we-1);
+}
 
 // ─── INVENTORY MATH ───────────────────────────────────────────
 // Per-category cost targets
@@ -656,13 +692,26 @@ function renderProjection(){
   }
   const tgt=gv('costTarget');
   const weeksLeft=4-we;
+  const velWks=velWeeksCount(); // only complete weeks for velocity
+  const periodNum=getPeriodNum();
+  const lyData=periodNum&&HISTORY_LY[periodNum]?HISTORY_LY[periodNum]:null;
 
-  // Velocity from all entered weeks (rolling re-baseline)
+  // Velocity from complete weeks only — excludes current in-progress week
+  // When only 1 complete week exists, blend 50/50 with LY same-period weekly pace
   const vel={};
   SCATS.forEach(cat=>{
-    const p=periodPurch(we,cat)+(cat==='Liquor'?periodPurch(we,'Shamrock/Mutual'):0);
-    const s=periodSales(we,cat);
-    vel[cat]={avgP:p/we,avgS:s/we};
+    const p=periodPurch(velWks,cat)+(cat==='Liquor'?periodPurch(velWks,'Shamrock/Mutual'):0);
+    const s=periodSales(velWks,cat);
+    const curAvgS=s/velWks;
+    const curAvgP=p/velWks;
+    if(velWks===1&&lyData){
+      // Blend: 50% current Week 1 + 50% LY same-period weekly average
+      const lyAvgS=lyData[cat]/4;
+      const lyAvgP=lyAvgS*(catTgt(cat)/100);
+      vel[cat]={avgS:curAvgS*0.5+lyAvgS*0.5,avgP:curAvgP*0.5+lyAvgP*0.5,blended:true};
+    } else {
+      vel[cat]={avgS:curAvgS,avgP:curAvgP,blended:false};
+    }
   });
 
   // Per-category projection
@@ -690,7 +739,7 @@ function renderProjection(){
     const projEnding=curInv+projPurchTotal-(projSalesTotal*(catTgt(cat)/100));
 
     cats[cat]={beg,curInv,drift,projPurchPW,projSalesPW,projEnding,
-      velocity:vel[cat],weeksIn:we,weeksLeft,
+      velocity:vel[cat],weeksIn:velWks,weeksLeft,
       isEstInv:r.isEstimated};
   });
 
@@ -751,7 +800,7 @@ function renderProjection(){
   const alerts=buildAlerts(cats,we,tgt,remWeeks);
 
   el.innerHTML=`
-  <div class="sec-div">PROJECTION ENGINE — Rolling baseline W${we===1?'1':'1–'+we} · Re-calculates each week · Inventory estimated at cost targets</div>
+  <div class="sec-div">PROJECTION ENGINE — Velocity baseline: ${velWks===1?'Week 1 only':'Weeks 1–'+velWks} (complete weeks) · ${isWeekComplete(we)?'':'Week '+we+' in progress · '}Re-calculates as weeks complete · Inventory estimated at cost targets</div>
   <div class="card card-accent">
     <div class="proj-hdr">
       <div class="proj-icon">
@@ -762,6 +811,18 @@ function renderProjection(){
         <div class="sec-sub">Targets to return ending inventory ≈ beginning · Baseline updates each week entered · Estimated inv. uses per-category cost targets</div>
       </div>
     </div>
+    ${lyData?`
+    <div style="background:var(--off);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">📅 Last Year P${periodNum} — Same Period</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <span style="font-size:var(--xs)"><span style="color:var(--muted)">Total Sales</span> <strong>${fc(lyData.Total)}</strong></span>
+        <span style="font-size:var(--xs)"><span style="color:var(--muted)">Beer</span> <strong>${fc(lyData.Beer)}</strong></span>
+        <span style="font-size:var(--xs)"><span style="color:var(--muted)">Wine</span> <strong>${fc(lyData.Wine)}</strong></span>
+        <span style="font-size:var(--xs)"><span style="color:var(--muted)">Liquor</span> <strong>${fc(lyData.Liquor)}</strong></span>
+        <span style="font-size:var(--xs)"><span style="color:var(--muted)">Cost %</span> <strong>${fp(lyData.costPct)}</strong></span>
+        ${velWks===1?`<span style="font-size:10px;font-style:italic;color:var(--primary)">(Blended into velocity — 50% W1 + 50% LY pace)</span>`:''}
+      </div>
+    </div>`:''}
     <div class="proj-cats">${catCards}</div>
     ${remWeeks.length>0?`
     <div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title" style="font-size:var(--base)">Weekly Purchase &amp; Sales Targets</div></div>
