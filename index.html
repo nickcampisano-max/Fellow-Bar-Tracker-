@@ -850,28 +850,73 @@ function renderProjection(){
   const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
   const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
 
-  const managerCards=remWeeks.length>0?`
-  <div class="target-cards">
-    <div class="target-card target-card-order">
-      <div class="target-card-lbl">🛒 Order This Week</div>
-      <div class="target-card-total">${fc(wP)}</div>
-      <div class="target-breakdown">
-        <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projPurchPW)}</span></div>
-        <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projPurchPW)}</span></div>
-        <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projPurchPW)}</span></div>
+  // Current week in-progress card (has data but not Sunday yet)
+  let inProgressCard='';
+  if(we>0&&!isWeekComplete(we)){
+    const cwP=SCATS.reduce((s,c)=>s+wPurch(we,c),0)+wPurch(we,'Shamrock/Mutual');
+    const cwS=SCATS.reduce((s,c)=>s+wSales(we,c),0);
+    const remP=Math.max(0,wP-cwP);
+    const remS=Math.max(0,wS-cwS);
+    inProgressCard=`
+  <div style="margin-bottom:16px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary);margin-bottom:8px">WEEK ${we} — IN PROGRESS</div>
+    <div class="target-cards">
+      <div class="target-card target-card-order">
+        <div class="target-card-lbl">🛒 Ordered So Far</div>
+        <div class="target-card-total">${fc(cwP)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wPurch(we,'Beer'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wPurch(we,'Wine'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wPurch(we,'Liquor')+wPurch(we,'Shamrock/Mutual'))}</span></div>
+          <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(wP)}</span></div>
+          <div class="target-row"><span class="target-row-lbl" style="color:var(--primary);font-weight:700">Still needed</span><span class="target-row-val" style="color:var(--primary);font-weight:700">${remP>0?fc(remP):'✓ Met'}</span></div>
+        </div>
+      </div>
+      <div class="target-card target-card-sales">
+        <div class="target-card-lbl">💰 Sold So Far</div>
+        <div class="target-card-total">${fc(cwS)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wSales(we,'Beer'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wSales(we,'Wine'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wSales(we,'Liquor'))}</span></div>
+          <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(wS)}</span></div>
+          <div class="target-row"><span class="target-row-lbl" style="color:var(--primary);font-weight:700">Still needed</span><span class="target-row-val" style="color:var(--primary);font-weight:700">${remS>0?fc(remS):'✓ Met'}</span></div>
+        </div>
       </div>
     </div>
-    <div class="target-card target-card-sales">
-      <div class="target-card-lbl">💰 Sell This Week</div>
-      <div class="target-card-total">${fc(wS)}</div>
-      <div class="target-breakdown">
-        <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projSalesPW)}</span></div>
-        <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projSalesPW)}</span></div>
-        <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projSalesPW)}</span></div>
+  </div>`;
+  }
+
+  // Remaining weeks — separate labeled block per week
+  const remainingCardsHtml=remWeeks.map((w,i)=>`
+  <div style="${i>0?'margin-top:14px':''}">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">WEEK ${w} TARGET</div>
+    <div class="target-cards">
+      <div class="target-card target-card-order">
+        <div class="target-card-lbl">🛒 Order This Week</div>
+        <div class="target-card-total">${fc(wP)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projPurchPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projPurchPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projPurchPW)}</span></div>
+        </div>
+      </div>
+      <div class="target-card target-card-sales">
+        <div class="target-card-lbl">💰 Sell This Week</div>
+        <div class="target-card-total">${fc(wS)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projSalesPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projSalesPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projSalesPW)}</span></div>
+        </div>
       </div>
     </div>
-  </div>
-  <div style="margin-bottom:4px">${statusBadge}</div>`
+  </div>`).join('');
+
+  const managerCards=(inProgressCard||remWeeks.length>0)?`
+  ${inProgressCard}
+  ${remainingCardsHtml}
+  <div style="margin-top:12px;margin-bottom:4px">${statusBadge}</div>`
   :`<div style="margin-bottom:8px">${statusBadge}<div class="alert a-ok" style="margin-top:10px"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div></div>`;
 
   // ── Operator details (collapsible) ────────────────────────────
