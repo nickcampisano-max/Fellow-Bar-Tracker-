@@ -846,7 +846,17 @@ function renderProjection(){
 function buildAlerts(cats,we,tgt,remWeeks){
   const alerts=[];
 
-  // Per-category inventory drift alerts (±$200 threshold)
+  // ── 1. LEAD WITH ACTION: weekly purchase & sales targets ──────
+  if(remWeeks.length>0){
+    const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
+    const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
+    alerts.push({t:'info',i:'🛒',
+      msg:`<strong>Order this week: ${fc(wP)}</strong> &nbsp;→&nbsp; Beer ${fc(cats['Beer'].projPurchPW)} · Wine ${fc(cats['Wine'].projPurchPW)} · Liquor ${fc(cats['Liquor'].projPurchPW)}<br><span style="font-size:10px;opacity:.8">Staying at or under this keeps you on track for the period.</span>`});
+    alerts.push({t:'info',i:'💰',
+      msg:`<strong>Sales target this week: ${fc(wS)}</strong> &nbsp;→&nbsp; Beer ${fc(cats['Beer'].projSalesPW)} · Wine ${fc(cats['Wine'].projSalesPW)} · Liquor ${fc(cats['Liquor'].projSalesPW)}`});
+  }
+
+  // ── 2. INVENTORY DRIFT ────────────────────────────────────────
   let anyDrift=false;
   SCATS.forEach(cat=>{
     const d=cats[cat];
@@ -854,24 +864,23 @@ function buildAlerts(cats,we,tgt,remWeeks){
       anyDrift=true;
       if(d.drift>0){
         alerts.push({t:'warn',i:'📦',
-          msg:`<strong>${cat} is stacking up — +${fc(d.drift)} above opening.</strong> Ease up on ${cat.toLowerCase()} orders. The targets below already correct for this.`});
+          msg:`<strong>${cat} is stacking up — +${fc(d.drift)} above opening.</strong> Ease up on ${cat.toLowerCase()} orders. Already reflected in the targets above.`});
       } else {
         alerts.push({t:'warn',i:'📉',
-          msg:`<strong>${cat} is running low — ${fc(Math.abs(d.drift))} below opening.</strong> Bump up ${cat.toLowerCase()} orders this week. Targets below have been adjusted.`});
+          msg:`<strong>${cat} is running low — ${fc(Math.abs(d.drift))} below opening.</strong> Bump up ${cat.toLowerCase()} orders. Already reflected in the targets above.`});
       }
     }
   });
   if(!anyDrift){
     alerts.push({t:'ok',i:'✅',
-      msg:`<strong>Inventory is balanced.</strong> All categories within $200 of opening — keep your current ordering pace.`});
+      msg:`<strong>Inventory is balanced.</strong> All categories within $200 of opening — stay the course.`});
   }
 
-  // Projected pour cost
+  // ── 3. POUR COST CONTEXT (honest, not verdict) ────────────────
   if(remWeeks.length>0){
-    const tP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0)*remWeeks.length;
     const tS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0)*remWeeks.length;
-    let actP=0,actS=0;
-    SCATS.forEach(c=>{const r=catCalc(c,we);actP+=r.costPurch;actS+=r.sales;});
+    let actS=0;
+    SCATS.forEach(c=>{const r=catCalc(c,we);actS+=r.sales;});
     const projTotS=actS+tS;
     let projBeg=0,projTotP=0,projEndTot=0;
     SCATS.forEach(c=>{
@@ -884,22 +893,12 @@ function buildAlerts(cats,we,tgt,remWeeks){
       const delta=projAdj-tgt;
       const onTrack=projAdj<=tgt;
       const slightlyOver=!onTrack&&projAdj<=tgt*1.08;
-      alerts.push({t:onTrack?'ok':slightlyOver?'warn':'err',i:onTrack?'🎯':'💸',
+      alerts.push({t:onTrack?'ok':slightlyOver?'warn':'err',i:onTrack?'🎯':'📊',
         msg:onTrack
-          ?`<strong>Pour cost on track — projecting ${fp(projAdj)}</strong> vs. ${fp(tgt)} target. You're good, keep it up.`
-          :`<strong>Pour cost projecting ${fp(projAdj)}</strong> — ${fp(Math.abs(delta))} over the ${fp(tgt)} target. ${slightlyOver?'Trim orders or push sales to close the gap.':'Check your biggest spend category — something\'s off. Tighten up orders.'} <em>(Estimate until period close.)</em>`
+          ?`<strong>Following these targets, you're projecting ${fp(projAdj)}</strong> — right at or under the ${fp(tgt)} goal. Keep it up.`
+          :`<strong>Following these targets, you're projecting ${fp(projAdj)}</strong> — ${fp(Math.abs(delta))} over the ${fp(tgt)} goal. ${slightlyOver?'Stay tight on orders and push Liquor sales to close the gap.':'Earlier weeks were heavy — these targets are already your best path to minimize the gap. Stick to them.'}`
       });
     }
-  }
-
-  // Weekly targets — one combined card
-  if(remWeeks.length>0){
-    const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
-    const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
-    alerts.push({t:'info',i:'🛒',
-      msg:`<strong>Order this week: ${fc(wP)}</strong> &nbsp;→&nbsp; Beer ${fc(cats['Beer'].projPurchPW)} · Wine ${fc(cats['Wine'].projPurchPW)} · Liquor ${fc(cats['Liquor'].projPurchPW)}`});
-    alerts.push({t:'info',i:'💰',
-      msg:`<strong>Sales target this week: ${fc(wS)}</strong> &nbsp;→&nbsp; Beer ${fc(cats['Beer'].projSalesPW)} · Wine ${fc(cats['Wine'].projSalesPW)} · Liquor ${fc(cats['Liquor'].projSalesPW)}`});
   }
 
   return alerts.map(a=>`<div class="alert a-${a.t}"><span class="alert-icon">${a.i}</span><span>${a.msg}</span></div>`).join('');
