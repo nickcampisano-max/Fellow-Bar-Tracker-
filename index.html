@@ -738,28 +738,45 @@ function renderProjection(){
     }
   });
 
-  // Per-category projection
+  // ── Pour-cost-target projection ───────────────────────────────
+  // Goal: back-calculate the remaining purchase budget needed to land the
+  // FULL period at the blended pour cost target, given what's already been
+  // spent in completed weeks. Answers: "what do I need to order so the
+  // period closes at 21.5%?" Inventory drawdown is accepted; operator
+  // reviews actual ending inventory at period close.
+  //
+  // Formula: remaining_budget = max(0, tgt% × total_period_sales − actual_cost_purch)
+  // Split per category by weight = catTgt% × cat_remaining_projected_sales
+
+  // Actual cost purchases and sales through completed weeks
+  let totalActCostPurch=0,totalActSales=0;
+  SCATS.forEach(c=>{const r=catCalc(c,we);totalActCostPurch+=r.costPurch;totalActSales+=r.sales;});
+
+  // Projected remaining and full-period sales
+  const totalProjRemSales=SCATS.reduce((s,c)=>s+vel[c].avgS*weeksLeft,0);
+  const totalPeriodSales=totalActSales+totalProjRemSales;
+
+  // Remaining purchase budget to hit blended target
+  const totalPurchBudget=(tgt/100)*totalPeriodSales;
+  const remainingBudget=Math.max(0,totalPurchBudget-totalActCostPurch);
+  const perWeekBudget=weeksLeft>0?remainingBudget/weeksLeft:0;
+
+  // Category allocation weights: catTgt% × remaining projected sales
+  const catWeightTotal=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*vel[c].avgS*weeksLeft,0);
+
   const cats={};
   SCATS.forEach(cat=>{
     const r=catCalc(cat,we);
     const beg=r.beg;
-    // Current estimated inventory using data through entered weeks
-    const curInv=r.endingUsed; // uses estimated ending (no actual mid-period)
+    const curInv=r.endingUsed;
     const drift=curInv-beg;
-
-    // To return inventory to beginning by period end:
-    // Over remaining weeks: total purchases = total sales at cost + inventory correction
-    // Projected sales remaining = velocity × weeks left
     const projSalesTotal=vel[cat].avgS*weeksLeft;
-    // To hold flat: purch = sales × cost target %
-    // To correct drift: subtract drift spread over remaining weeks
-    const projPurchToHoldFlat=projSalesTotal*(catTgt(cat)/100);
-    // Correction: we need ending = beg, so: curInv + projPurch - projSalesAtCost = beg
-    // projPurch = beg - curInv + projSalesAtCost
-    const projPurchTotal=Math.max(0,(beg-curInv)+projPurchToHoldFlat);
-    const projPurchPW=weeksLeft>0?projPurchTotal/weeksLeft:0;
     const projSalesPW=vel[cat].avgS;
-    // Projected ending after correction
+    // This category's share of the remaining budget
+    const catWt=catWeightTotal>0?(catTgt(cat)/100)*projSalesTotal/catWeightTotal:0;
+    const projPurchPW=perWeekBudget*catWt;
+    const projPurchTotal=projPurchPW*weeksLeft;
+    // Projected ending inventory — may run below beg if weeks 1-N overspent
     const projEnding=curInv+projPurchTotal-(projSalesTotal*(catTgt(cat)/100));
 
     cats[cat]={beg,curInv,drift,projPurchPW,projSalesPW,projEnding,
@@ -954,7 +971,7 @@ function renderProjection(){
       </div>
       <div>
         <div class="sec-title">Weekly Targets${remWeeks.length>0?' — Week'+(remWeeks.length>1?'s ':' ')+remWeeks.join(' & '):'  — Period Complete'}</div>
-        <div class="sec-sub">Follow these targets to hit ${fp(tgt)} pour cost and keep inventory balanced</div>
+        <div class="sec-sub">Follow these targets to land the full period at ${fp(tgt)} pour cost</div>
       </div>
     </div>
     ${managerCards}
