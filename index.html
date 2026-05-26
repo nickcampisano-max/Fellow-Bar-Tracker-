@@ -364,7 +364,7 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Shamrock/Mutual'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{} };
+let st = { week:1, p:{}, s:{}, notes:{}, scenarioSales:0 };
 for(let w=1;w<=4;w++){
   st.p[w]={};st.s[w]={};st.notes[w]='';
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
@@ -936,6 +936,73 @@ function renderProjection(){
   <div style="margin-top:12px;margin-bottom:4px">${statusBadge}</div>`
   :`<div style="margin-bottom:8px">${statusBadge}<div class="alert a-ok" style="margin-top:10px"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div></div>`;
 
+  // ── Scenario planner ─────────────────────────────────────────
+  let scenPlannerHtml='';
+  if(remWeeks.length>0){
+    const scenCalc=wkSales=>{
+      const totS=totalActSales+wkSales*weeksLeft;
+      const budget=Math.max(0,(tgt/100)*totS-totalActCostPurch);
+      const wkP=weeksLeft>0?budget/weeksLeft:0;
+      return{sales:wkSales,purch:wkP,costPct:wkSales>0?(wkP/wkSales)*100:0};
+    };
+    const velSalesWk=wS;
+    const conservSales=st.scenarioSales>0?st.scenarioSales:velSalesWk*0.80;
+    const sc={
+      c:scenCalc(conservSales),
+      v:scenCalc(velSalesWk),
+      s:scenCalc(velSalesWk*1.15)
+    };
+    const sCol=p=>p<=tgt?'var(--ok)':p<=tgt*1.1?'var(--warn)':'var(--err)';
+    scenPlannerHtml=`
+  <div style="margin-top:18px;border-top:1px solid var(--divider);padding-top:16px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📊 SCENARIO PLANNER</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:var(--xs);color:var(--muted)">Your weekly sales estimate:</span>
+      <div class="dollar" style="max-width:140px">
+        <input class="fin" type="text" inputmode="decimal"
+          value="${st.scenarioSales>0?fd(st.scenarioSales,0):''}"
+          placeholder="${fc(velSalesWk)}"
+          onchange="setScenarioSales(this.value)"
+          onfocus="this.select()">
+      </div>
+      <span style="font-size:10px;color:var(--faint);font-style:italic">blank = velocity</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:360px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--muted);font-weight:600;background:var(--off)"></th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Conservative</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Weekly Sales</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.c.sales)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.v.sales)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.s.sales)}</td>
+          </tr>
+          <tr style="background:var(--off);border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Order Target</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.c.purch)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.v.purch)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.s.purch)}</td>
+          </tr>
+          <tr style="border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Blended Cost %</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.c.costPct)}">${fp(sc.c.costPct)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.v.costPct)}">${fp(sc.v.costPct)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.s.costPct)}">${fp(sc.s.costPct)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--faint);margin-top:6px">Conservative = your estimate or −20% velocity · Stretch = +15% velocity · Targets assume period closes at ${fp(tgt)}</div>
+  </div>`;
+  }
+
   // ── Operator details (collapsible) ────────────────────────────
   const lyBanner=lyData?`
   <div style="background:var(--off);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -975,6 +1042,7 @@ function renderProjection(){
       </div>
     </div>
     ${managerCards}
+    ${scenPlannerHtml}
     <details class="op-details">
       <summary>OPERATOR DETAILS</summary>
       ${lyBanner}
@@ -1075,6 +1143,11 @@ function setWeek(w){
   st.week=w;
   document.querySelectorAll('.wtab').forEach((t,i)=>t.classList.toggle('active',i+1===w));
   render();
+}
+function setScenarioSales(val){
+  st.scenarioSales=Math.max(0,parseNum(val)||0);
+  renderProjection();
+  saveState();
 }
 function setVal(type,week,cat,day,val){
   const v=Math.max(0,parseNum(val)||0);
