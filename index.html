@@ -835,56 +835,64 @@ function renderProjection(){
       return{sales:wkSales,purch:wkP,costPct:wkSales>0?(wkP/wkSales)*100:0};
     };
     const velSalesWk=wS;
-    const conservSales=st.scenarioSales>0?st.scenarioSales:velSalesWk*0.80;
-    const sc={c:scenCalc(conservSales),v:scenCalc(velSalesWk),s:scenCalc(velSalesWk*1.15)};
+    // "Your Estimate" is pinned to st.scenarioSales — only changes when manager types a new number.
+    // Velocity and Stretch update dynamically as data comes in.
+    const estimateSales=st.scenarioSales>0?st.scenarioSales:velSalesWk;
+    const sc={e:scenCalc(estimateSales),v:scenCalc(velSalesWk),s:scenCalc(velSalesWk*1.15)};
     const sCol=p=>p<=tgt?'var(--ok)':p<=tgt*1.1?'var(--warn)':'var(--err)';
+    const estIsSet=st.scenarioSales>0;
+    const estDiff=estIsSet?(estimateSales-velSalesWk):0;
+    const estDiffStr=estIsSet&&Math.abs(estDiff)>50
+      ?`<span style="font-size:10px;color:${estDiff<0?'var(--err)':'var(--ok)'};margin-left:6px">(${estDiff>0?'+':''}${fc(estDiff)} vs pace)</span>`
+      :'';
     scenPlannerHtml=`
   <div style="margin-top:18px;border-top:1px solid var(--divider);padding-top:16px">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📊 SCENARIO PLANNER</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
       <span style="font-size:var(--xs);color:var(--muted)">Your weekly sales estimate:</span>
       <div class="dollar" style="max-width:140px">
         <input class="fin" type="text" inputmode="decimal"
-          value="${st.scenarioSales>0?fd(st.scenarioSales,0):''}"
+          value="${estIsSet?fd(estimateSales,0):''}"
           placeholder="${fc(velSalesWk)}"
           onchange="setScenarioSales(this.value)"
           onfocus="this.select()">
       </div>
-      <span style="font-size:10px;color:var(--faint);font-style:italic">blank = velocity</span>
+      ${estDiffStr}
     </div>
+    <div style="font-size:10px;color:var(--faint);font-style:italic;margin-bottom:12px">📌 Your Estimate is pinned — only changes when you update it &nbsp;·&nbsp; Velocity &amp; Stretch update live</div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;min-width:360px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
         <thead>
           <tr>
             <th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--muted);font-weight:600;background:var(--off)"></th>
-            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Conservative</th>
-            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity</th>
-            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Your Estimate${estIsSet?'&nbsp;📌':''}</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity ↻</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch ↻</th>
           </tr>
         </thead>
         <tbody>
           <tr style="border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Weekly Sales</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.c.sales)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.e.sales)}</td>
             <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.v.sales)}</td>
             <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.s.sales)}</td>
           </tr>
           <tr style="background:var(--off);border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Order Target</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.c.purch)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.e.purch)}</td>
             <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.v.purch)}</td>
             <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.s.purch)}</td>
           </tr>
           <tr style="border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Blended Cost %</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.c.costPct)}">${fp(sc.c.costPct)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.e.costPct)}">${fp(sc.e.costPct)}</td>
             <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.v.costPct)}">${fp(sc.v.costPct)}</td>
             <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.s.costPct)}">${fp(sc.s.costPct)}</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <div style="font-size:10px;color:var(--faint);margin-top:6px">Conservative = your estimate or −20% velocity · Stretch = +15% velocity · Targets assume period closes at ${fp(tgt)}</div>
+    <div style="font-size:10px;color:var(--faint);margin-top:6px">Stretch = +15% current pace · Targets assume period closes at ${fp(tgt)}</div>
   </div>`;
   }
 
