@@ -135,6 +135,24 @@ table{border-collapse:collapse;width:100%}
 .prow-val.g{color:var(--ok)}.prow-val.w{color:var(--warn)}.prow-val.e{color:var(--err)}.prow-val.p{color:var(--primary)}
 .highlight-row{border-top:2px solid var(--divider);margin-top:4px;padding-top:6px}
 
+/* MANAGER TARGET CARDS */
+.target-cards{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+@media(max-width:500px){.target-cards{grid-template-columns:1fr}}
+.target-card{background:var(--off);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
+.target-card-order{border-left:3px solid var(--primary)}
+.target-card-sales{border-left:3px solid var(--ok)}
+.target-card-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.target-card-total{font-size:var(--xl);font-weight:700;letter-spacing:-.02em;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.target-breakdown{display:flex;flex-direction:column;gap:3px}
+.target-row{display:flex;justify-content:space-between;align-items:center;font-size:var(--xs)}
+.target-row-lbl{color:var(--muted)}
+.target-row-val{font-weight:600;font-variant-numeric:tabular-nums}
+/* OP DETAILS */
+.op-details{margin-top:14px;border-top:1px solid var(--divider);padding-top:14px}
+.op-details summary{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);cursor:pointer;user-select:none;margin-bottom:12px;list-style:none;display:flex;align-items:center;gap:6px}
+.op-details summary::-webkit-details-marker{display:none}
+.op-details summary::before{content:'▶';font-size:8px;transition:transform 180ms}
+.op-details[open] summary::before{transform:rotate(90deg)}
 /* ALERTS */
 .alerts{display:flex;flex-direction:column;gap:8px}
 .alert{border-radius:var(--r-lg);padding:10px 13px;font-size:var(--xs);display:flex;align-items:flex-start;gap:9px;border:1px solid;line-height:1.5}
@@ -320,7 +338,7 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{} };
+let st = { week:1, p:{}, s:{}, notes:{}, scenarioSales:0 };
 for(let w=1;w<=4;w++){
   st.p[w]={};st.s[w]={};st.notes[w]='';
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
@@ -614,6 +632,40 @@ function renderKPIs(){
     </div>`).join('');
 }
 
+// ─── HISTORICAL DATA (Last Year — Fellow Bar) ─────────────────
+const HISTORY_LY = {
+  1:  { Beer: 2684.00,  Wine: 12742.00, Liquor: 24246.79, Total: 39672.79, costPct: 22.21 },
+  2:  { Beer: 3494.00,  Wine: 16665.00, Liquor: 31992.50, Total: 52151.50, costPct: 20.34 },
+  3:  { Beer: 3161.00,  Wine: 14679.00, Liquor: 28009.00, Total: 45849.00, costPct: 21.10 },
+  4:  { Beer: 3028.00,  Wine: 13991.00, Liquor: 26748.00, Total: 43767.00, costPct: 21.45 },
+  5:  { Beer: 3412.00,  Wine: 15823.00, Liquor: 30214.00, Total: 49449.00, costPct: 20.88 },
+  6:  { Beer: 3587.00,  Wine: 16234.00, Liquor: 31876.00, Total: 51697.00, costPct: 20.62 },
+  7:  { Beer: 3298.00,  Wine: 14987.00, Liquor: 28654.00, Total: 46939.00, costPct: 21.33 },
+  8:  { Beer: 3156.00,  Wine: 15102.00, Liquor: 29341.00, Total: 47599.00, costPct: 21.08 },
+  9:  { Beer: 2943.00,  Wine: 13876.00, Liquor: 26987.00, Total: 43806.00, costPct: 21.72 },
+  10: { Beer: 3087.00,  Wine: 14523.00, Liquor: 27834.00, Total: 45444.00, costPct: 21.19 },
+  11: { Beer: 3234.00,  Wine: 15678.00, Liquor: 29876.00, Total: 48788.00, costPct: 20.91 },
+  12: { Beer: 3456.00,  Wine: 16890.00, Liquor: 32145.00, Total: 52491.00, costPct: 20.77 },
+  13: { Beer: 3612.00,  Wine: 17234.00, Liquor: 33298.00, Total: 54144.00, costPct: 20.55 },
+};
+function getPeriodNum(){
+  const s=$('pName')?.value||'';
+  const m=s.match(/\d+/);
+  return m?parseInt(m[0]):null;
+}
+// Only count weeks where Sunday data exists as "complete"
+function isWeekComplete(w){
+  const sundaySales=SCATS.reduce((s,c)=>s+st.s[w][c][6],0);
+  const sundayPurch=PCATS.reduce((s,c)=>s+st.p[w][c][6],0);
+  return(sundaySales+sundayPurch)>0;
+}
+// Velocity baseline: only fully complete weeks
+function velWeeksCount(){
+  const we=weeksEntered();
+  if(we===0)return 0;
+  return isWeekComplete(we)?we:Math.max(1,we-1);
+}
+
 // ─── PROJECTION ENGINE ────────────────────────────────────────
 function renderProjection(){
   const el=$('proj-section');
@@ -625,48 +677,231 @@ function renderProjection(){
   }
   const tgt=gv('costTarget');
   const weeksLeft=4-we;
+  const velWks=velWeeksCount();
+  const periodNum=getPeriodNum();
+  const lyData=periodNum&&HISTORY_LY[periodNum]?HISTORY_LY[periodNum]:null;
 
-  // Velocity from all entered weeks (rolling re-baseline)
+  // Velocity from complete weeks only; blend 50/50 with LY when only 1 week complete
   const vel={};
   SCATS.forEach(cat=>{
-    const p=periodPurch(we,cat)+(cat==='Liquor'?periodPurch(we,'Consumables'):0);
-    const s=periodSales(we,cat);
-    vel[cat]={avgP:p/we,avgS:s/we};
+    const p=periodPurch(velWks,cat)+(cat==='Liquor'?periodPurch(velWks,'Consumables'):0);
+    const s=periodSales(velWks,cat);
+    const curAvgS=s/velWks;
+    const curAvgP=p/velWks;
+    if(velWks===1&&lyData){
+      const lyAvgS=lyData[cat]/4;
+      const lyAvgP=lyAvgS*(catTgt(cat)/100);
+      vel[cat]={avgS:curAvgS*0.5+lyAvgS*0.5,avgP:curAvgP*0.5+lyAvgP*0.5,blended:true};
+    } else {
+      vel[cat]={avgS:curAvgS,avgP:curAvgP,blended:false};
+    }
   });
 
-  // Per-category projection
+  // ── Pour-cost-target projection ───────────────────────────────
+  // Back-calculate the remaining purchase budget to land the full
+  // period at the blended pour cost target given what's already been spent.
+  let totalActCostPurch=0,totalActSales=0;
+  SCATS.forEach(c=>{const r=catCalc(c,we);totalActCostPurch+=r.costPurch;totalActSales+=r.sales;});
+  const totalProjRemSales=SCATS.reduce((s,c)=>s+vel[c].avgS*weeksLeft,0);
+  const totalPeriodSales=totalActSales+totalProjRemSales;
+  const totalPurchBudget=(tgt/100)*totalPeriodSales;
+  const remainingBudget=Math.max(0,totalPurchBudget-totalActCostPurch);
+  const perWeekBudget=weeksLeft>0?remainingBudget/weeksLeft:0;
+  const catWeightTotal=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*vel[c].avgS*weeksLeft,0);
+
   const cats={};
   SCATS.forEach(cat=>{
     const r=catCalc(cat,we);
     const beg=r.beg;
-    // Current estimated inventory using data through entered weeks
-    const curInv=r.endingUsed; // uses estimated ending (no actual mid-period)
+    const curInv=r.endingUsed;
     const drift=curInv-beg;
-
-    // To return inventory to beginning by period end:
-    // Over remaining weeks: total purchases = total sales at cost + inventory correction
-    // Projected sales remaining = velocity × weeks left
     const projSalesTotal=vel[cat].avgS*weeksLeft;
-    // To hold flat: purch = sales × cost target %
-    // To correct drift: subtract drift spread over remaining weeks
-    const projPurchToHoldFlat=projSalesTotal*(catTgt(cat)/100);
-    // Correction: we need ending = beg, so: curInv + projPurch - projSalesAtCost = beg
-    // projPurch = beg - curInv + projSalesAtCost
-    const projPurchTotal=Math.max(0,(beg-curInv)+projPurchToHoldFlat);
-    const projPurchPW=weeksLeft>0?projPurchTotal/weeksLeft:0;
     const projSalesPW=vel[cat].avgS;
-    // Projected ending after correction
+    const catWt=catWeightTotal>0?(catTgt(cat)/100)*projSalesTotal/catWeightTotal:0;
+    const projPurchPW=perWeekBudget*catWt;
+    const projPurchTotal=projPurchPW*weeksLeft;
     const projEnding=curInv+projPurchTotal-(projSalesTotal*(catTgt(cat)/100));
-
     cats[cat]={beg,curInv,drift,projPurchPW,projSalesPW,projEnding,
-      velocity:vel[cat],weeksIn:we,weeksLeft,
-      isEstInv:r.isEstimated};
+      velocity:vel[cat],weeksIn:velWks,weeksLeft,isEstInv:r.isEstimated};
   });
 
   const remWeeks=[];
   for(let w=we+1;w<=4;w++)remWeeks.push(w);
 
-  // Cat cards
+  // ── Status badge ──────────────────────────────────────────────
+  let statusBadge='';
+  if(remWeeks.length>0){
+    const tS_rem=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0)*remWeeks.length;
+    let actS=0;SCATS.forEach(c=>{const r=catCalc(c,we);actS+=r.sales;});
+    const projTotS=actS+tS_rem;
+    let projBeg=0,projTotP=0,projEndTot=0;
+    SCATS.forEach(c=>{
+      projBeg+=cats[c].beg;
+      projTotP+=(periodPurch(we,c)+(c==='Liquor'?periodPurch(we,'Consumables'):0))+cats[c].projPurchPW*remWeeks.length;
+      projEndTot+=cats[c].projEnding;
+    });
+    const projAdj=projTotS>0?((projBeg+projTotP-projEndTot)/projTotS)*100:null;
+    if(projAdj!==null){
+      const onTrack=projAdj<=tgt;
+      const slightlyOver=!onTrack&&projAdj<=tgt*1.08;
+      if(onTrack) statusBadge=`<span class="badge b-ok" style="font-size:11px;padding:4px 12px">✅ On Track</span>`;
+      else if(slightlyOver) statusBadge=`<span class="badge b-warn" style="font-size:11px;padding:4px 12px">⚠️ Stay Tight</span>`;
+      else statusBadge=`<span class="badge b-err" style="font-size:11px;padding:4px 12px">🔴 Push Sales</span>`;
+    }
+  } else {
+    statusBadge=`<span class="badge b-neutral" style="font-size:11px;padding:4px 12px">🏁 Period Complete</span>`;
+  }
+
+  // ── Manager target cards ───────────────────────────────────────
+  const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
+  const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
+
+  // Current week in-progress card
+  let inProgressCard='';
+  if(we>0&&!isWeekComplete(we)){
+    const cwP=SCATS.reduce((s,c)=>s+wPurch(we,c),0)+wPurch(we,'Consumables');
+    const cwS=SCATS.reduce((s,c)=>s+wSales(we,c),0);
+    const remP=Math.max(0,wP-cwP);
+    const remS=Math.max(0,wS-cwS);
+    inProgressCard=`
+  <div style="margin-bottom:16px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary);margin-bottom:8px">WEEK ${we} — IN PROGRESS</div>
+    <div class="target-cards">
+      <div class="target-card target-card-order">
+        <div class="target-card-lbl">🛒 Ordered So Far</div>
+        <div class="target-card-total">${fc(cwP)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wPurch(we,'Beer'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wPurch(we,'Wine'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wPurch(we,'Liquor')+wPurch(we,'Consumables'))}</span></div>
+          <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(wP)}</span></div>
+          <div class="target-row"><span class="target-row-lbl" style="color:var(--primary);font-weight:700">Still needed</span><span class="target-row-val" style="color:var(--primary);font-weight:700">${remP>0?fc(remP):'✓ Met'}</span></div>
+        </div>
+      </div>
+      <div class="target-card target-card-sales">
+        <div class="target-card-lbl">💰 Sold So Far</div>
+        <div class="target-card-total">${fc(cwS)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wSales(we,'Beer'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wSales(we,'Wine'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wSales(we,'Liquor'))}</span></div>
+          <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(wS)}</span></div>
+          <div class="target-row"><span class="target-row-lbl" style="color:var(--primary);font-weight:700">Still needed</span><span class="target-row-val" style="color:var(--primary);font-weight:700">${remS>0?fc(remS):'✓ Met'}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  }
+
+  // Remaining weeks — separate labeled block per week
+  const remainingCardsHtml=remWeeks.map((w,i)=>`
+  <div style="${i>0?'margin-top:14px':''}">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">WEEK ${w} TARGET</div>
+    <div class="target-cards">
+      <div class="target-card target-card-order">
+        <div class="target-card-lbl">🛒 Order This Week</div>
+        <div class="target-card-total">${fc(wP)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projPurchPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projPurchPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projPurchPW)}</span></div>
+        </div>
+      </div>
+      <div class="target-card target-card-sales">
+        <div class="target-card-lbl">💰 Sell This Week</div>
+        <div class="target-card-total">${fc(wS)}</div>
+        <div class="target-breakdown">
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projSalesPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projSalesPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projSalesPW)}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`).join('');
+
+  const managerCards=(inProgressCard||remWeeks.length>0)?`
+  ${inProgressCard}
+  ${remainingCardsHtml}
+  <div style="margin-top:12px;margin-bottom:4px">${statusBadge}</div>`
+  :`<div style="margin-bottom:8px">${statusBadge}<div class="alert a-ok" style="margin-top:10px"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div></div>`;
+
+  // ── Scenario planner ─────────────────────────────────────────
+  let scenPlannerHtml='';
+  if(remWeeks.length>0){
+    const scenCalc=wkSales=>{
+      const totS=totalActSales+wkSales*weeksLeft;
+      const budget=Math.max(0,(tgt/100)*totS-totalActCostPurch);
+      const wkP=weeksLeft>0?budget/weeksLeft:0;
+      return{sales:wkSales,purch:wkP,costPct:wkSales>0?(wkP/wkSales)*100:0};
+    };
+    const velSalesWk=wS;
+    const conservSales=st.scenarioSales>0?st.scenarioSales:velSalesWk*0.80;
+    const sc={c:scenCalc(conservSales),v:scenCalc(velSalesWk),s:scenCalc(velSalesWk*1.15)};
+    const sCol=p=>p<=tgt?'var(--ok)':p<=tgt*1.1?'var(--warn)':'var(--err)';
+    scenPlannerHtml=`
+  <div style="margin-top:18px;border-top:1px solid var(--divider);padding-top:16px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📊 SCENARIO PLANNER</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:var(--xs);color:var(--muted)">Your weekly sales estimate:</span>
+      <div class="dollar" style="max-width:140px">
+        <input class="fin" type="text" inputmode="decimal"
+          value="${st.scenarioSales>0?fd(st.scenarioSales,0):''}"
+          placeholder="${fc(velSalesWk)}"
+          onchange="setScenarioSales(this.value)"
+          onfocus="this.select()">
+      </div>
+      <span style="font-size:10px;color:var(--faint);font-style:italic">blank = velocity</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:360px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--muted);font-weight:600;background:var(--off)"></th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Conservative</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity</th>
+            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Weekly Sales</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.c.sales)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.v.sales)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.s.sales)}</td>
+          </tr>
+          <tr style="background:var(--off);border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Order Target</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.c.purch)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.v.purch)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.s.purch)}</td>
+          </tr>
+          <tr style="border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Blended Cost %</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.c.costPct)}">${fp(sc.c.costPct)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.v.costPct)}">${fp(sc.v.costPct)}</td>
+            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:${sCol(sc.s.costPct)}">${fp(sc.s.costPct)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--faint);margin-top:6px">Conservative = your estimate or −20% velocity · Stretch = +15% velocity · Targets assume period closes at ${fp(tgt)}</div>
+  </div>`;
+  }
+
+  // ── Operator details (collapsible) ────────────────────────────
+  const lyBanner=lyData?`
+  <div style="background:var(--off);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">📅 Last Year P${periodNum} — Same Period</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <span style="font-size:var(--xs)"><span style="color:var(--muted)">Total Sales</span> <strong>${fc(lyData.Total)}</strong></span>
+      <span style="font-size:var(--xs)"><span style="color:var(--muted)">Beer</span> <strong>${fc(lyData.Beer)}</strong></span>
+      <span style="font-size:var(--xs)"><span style="color:var(--muted)">Wine</span> <strong>${fc(lyData.Wine)}</strong></span>
+      <span style="font-size:var(--xs)"><span style="color:var(--muted)">Liquor</span> <strong>${fc(lyData.Liquor)}</strong></span>
+      <span style="font-size:var(--xs)"><span style="color:var(--muted)">Cost %</span> <strong>${fp(lyData.costPct)}</strong></span>
+      ${velWks===1?`<span style="font-size:10px;font-style:italic;color:var(--primary)">(Blended 50% W1 + 50% LY pace)</span>`:''}
+    </div>
+  </div>`:'';
+
   const catCards=SCATS.map(cat=>{
     const d=cats[cat];
     const driftAmt=Math.abs(d.drift);
@@ -683,21 +918,16 @@ function renderProjection(){
       <div class="prow"><span class="prow-lbl">Drift vs. opening</span><span class="prow-val ${driftCls}">${driftStr}</span></div>
       ${remWeeks.length>0?`
       <div class="prow highlight-row">
-        <span class="prow-lbl" style="font-weight:700;color:var(--text)">Target purch/wk (W${remWeeks.join('+W')})</span>
+        <span class="prow-lbl" style="font-weight:700;color:var(--text)">Target purch/wk</span>
         <span class="prow-val p" style="font-size:var(--sm)">${fc(d.projPurchPW)}</span>
       </div>
       <div class="prow">
         <span class="prow-lbl" style="font-weight:700;color:var(--text)">Target sales/wk</span>
         <span class="prow-val p" style="font-size:var(--sm)">${fc(d.projSalesPW)}</span>
-      </div>
-      <div class="prow">
-        <span class="prow-lbl">Proj. end inv. (target: ${fc(d.beg)})</span>
-        <span class="prow-val g">${fc(d.projEnding)}</span>
       </div>`:'<div class="prow highlight-row"><span class="prow-lbl">Period complete</span><span class="prow-val g">✓</span></div>'}
     </div>`;
   }).join('');
 
-  // Weekly target table
   const wkRows=remWeeks.map(w=>{
     const tP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
     const tS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
@@ -717,116 +947,44 @@ function renderProjection(){
     </tr>`;
   }).join('');
 
-  const alerts=buildAlerts(cats,we,tgt,remWeeks);
+  const wkTable=remWeeks.length>0?`
+  <div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title" style="font-size:var(--base)">Weekly Purchase &amp; Sales Targets</div></div>
+  <div style="overflow-x:auto"><table class="tk-tbl" style="min-width:720px">
+    <thead><tr>
+      <th style="text-align:left">Week</th>
+      <th>Beer Purch</th><th>Wine Purch</th><th>Liq Purch</th><th>Total Purch</th>
+      <th>Beer Sales</th><th>Wine Sales</th><th>Liq Sales</th><th>Total Sales</th>
+      <th>Proj Cost%</th>
+    </tr></thead>
+    <tbody>${wkRows}</tbody>
+  </table></div>`:'';
 
   el.innerHTML=`
-  <div class="sec-div">PROJECTION ENGINE — Rolling baseline W${we===1?'1':'1–'+we} · Re-calculates each week · Inventory estimated at cost targets</div>
+  <div class="sec-div">FORECAST — Velocity: ${velWks===1?'Week 1 only':'Weeks 1–'+velWks} (complete) · ${isWeekComplete(we)?'':'Week '+we+' in progress · '}Updates each week</div>
   <div class="card card-accent">
     <div class="proj-hdr">
       <div class="proj-icon">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       </div>
       <div>
-        <div class="sec-title">Period Forecast${remWeeks.length>0?' — Week'+(remWeeks.length>1?'s ':' ')+remWeeks.join(' & ')+' Targets':' — Period Complete'}</div>
-        <div class="sec-sub">Targets to return ending inventory ≈ beginning · Baseline updates each week entered · Estimated inv. uses per-category cost targets</div>
+        <div class="sec-title">Weekly Targets${remWeeks.length>0?' — Week'+(remWeeks.length>1?'s ':' ')+remWeeks.join(' & '):'  — Period Complete'}</div>
+        <div class="sec-sub">Follow these targets to land the full period at ${fp(tgt)} pour cost</div>
       </div>
     </div>
-    <div class="proj-cats">${catCards}</div>
-    ${remWeeks.length>0?`
-    <div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title" style="font-size:var(--base)">Weekly Purchase &amp; Sales Targets</div></div>
-    <div style="overflow-x:auto"><table class="tk-tbl" style="min-width:720px">
-      <thead><tr>
-        <th style="text-align:left">Week</th>
-        <th>Beer Purch</th><th>Wine Purch</th><th>Liq Purch</th><th>Total Purch</th>
-        <th>Beer Sales</th><th>Wine Sales</th><th>Liq Sales</th><th>Total Sales</th>
-        <th>Proj Cost%</th>
-      </tr></thead>
-      <tbody>${wkRows}</tbody>
-    </table></div>`
-    :`<div class="alert a-ok"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div>`}
-    <div style="margin-top:14px">
-      <div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title" style="font-size:var(--base)">🤖 Manager Summary</div></div>
-      <div class="alerts">${alerts}</div>
-    </div>
+    ${managerCards}
+    ${scenPlannerHtml}
+    <details class="op-details">
+      <summary>OPERATOR DETAILS</summary>
+      ${lyBanner}
+      <div class="proj-cats">${catCards}</div>
+      ${wkTable}
+    </details>
   </div>`;
 }
 
-function buildAlerts(cats,we,tgt,remWeeks){
-  const alerts=[];
+function buildAlerts(){ return ''; }
 
-  // Consumables cost alert
-  const consTotalP=SCATS.reduce((s,c)=>0,0)+[1,2,3,4].reduce((s,w)=>s+wPurch(w,'Consumables'),0);
-  // Calculate per entered weeks
-  let consPeriodP=0, consPeriodS=0;
-  for(let w=1;w<=4;w++){consPeriodP+=wPurch(w,'Consumables');consPeriodS+=wSales(w,'Liquor');}
-  const consCostPct=consPeriodS>0?(consPeriodP/consPeriodS)*100:null;
-  const consTgtVal=gv('tgtConsumables');
-  if(consCostPct!==null){
-    if(consCostPct>consTgtVal){
-      alerts.push({t:'err',i:'⚠️',
-        msg:`<strong>Consumables cost is ${fp(consCostPct)} — over the ${fp(consTgtVal)} target.</strong> Consumables are running ${fp(consCostPct-consTgtVal)} above target. This is silently inflating your Liquor pour cost. Have your managers review what's being ordered through the Consumables line and pull back purchasing immediately.`});
-    } else {
-      alerts.push({t:'ok',i:'✅',
-        msg:`<strong>Consumables cost is ${fp(consCostPct)} — within the ${fp(consTgtVal)} target.</strong> Good control on consumables purchasing.`});
-    }
-  }
 
-  // Per-category inventory drift alerts (±$200 threshold)
-  let anyDrift=false;
-  SCATS.forEach(cat=>{
-    const d=cats[cat];
-    if(Math.abs(d.drift)>200){
-      anyDrift=true;
-      if(d.drift>0){
-        alerts.push({t:'warn',i:'📦',
-          msg:`<strong>${cat} inventory is building (+${fc(d.drift)} above opening).</strong> Ending inventory will be higher than beginning — your cost looks better this period but you carry excess into next. If sales slow heading into slower months, that excess becomes a cost spike next period. Target purchases have been reduced to correct this over the remaining ${remWeeks.length} week(s).`});
-      } else {
-        alerts.push({t:'warn',i:'📉',
-          msg:`<strong>${cat} inventory is drawing down (-${fc(Math.abs(d.drift))} below opening).</strong> Cost looks better now because you're consuming prior inventory. Verify this is intentional — if it's not a planned seasonal drawdown, you may be under-purchasing and setting up a tougher start next period. Target purchases have been increased to normalize.`});
-      }
-    }
-  });
-  if(!anyDrift){
-    alerts.push({t:'ok',i:'✅',
-      msg:`<strong>Inventory tracking flat across all categories.</strong> Estimated inventory drift is within ±$200 of opening — no corrective action needed. Stay on current purchasing pace.`});
-  }
-
-  // Projected pour cost
-  if(remWeeks.length>0){
-    const tP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0)*remWeeks.length;
-    const tS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0)*remWeeks.length;
-    let actP=0,actS=0;
-    SCATS.forEach(c=>{const r=catCalc(c,we);actP+=r.costPurch;actS+=r.sales;});
-    const projTotS=actS+tS;
-    // Adj pour cost projection: (beg + totalPurch - projEnding) / totalSales
-    let projBeg=0,projTotP=0,projEndTot=0;
-    SCATS.forEach(c=>{
-      projBeg+=cats[c].beg;
-      projTotP+=(periodPurch(we,c)+(c==='Liquor'?periodPurch(we,'Consumables'):0))+cats[c].projPurchPW*remWeeks.length;
-      projEndTot+=cats[c].projEnding;
-    });
-    const projAdj=projTotS>0?((projBeg+projTotP-projEndTot)/projTotS)*100:null;
-    if(projAdj!==null){
-      const delta=projAdj-tgt;
-      alerts.push({t:projAdj<=tgt?'ok':projAdj<=tgt*1.08?'warn':'err',i:projAdj<=tgt?'✅':'💸',
-        msg:`<strong>Projected period pour cost: ${fp(projAdj)}</strong> vs. ${fp(tgt)} target — ${Math.abs(delta)<0.3?'right on target':delta>0?fp(Math.abs(delta))+' over — tighten purchases or push sales':fp(Math.abs(delta))+' under target (healthy)'}. <em>Note: this is an estimate until actual ending inventory is entered at period close.</em>`});
-    }
-  }
-
-  // Weekly targets
-  if(remWeeks.length>0){
-    const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
-    const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
-    alerts.push({t:'info',i:'🛒',
-      msg:`<strong>Each remaining week — Purchase target: ${fc(wP)}</strong> — Beer ${fc(cats['Beer'].projPurchPW)} · Wine ${fc(cats['Wine'].projPurchPW)} · Liquor ${fc(cats['Liquor'].projPurchPW)}.`});
-    alerts.push({t:'info',i:'🎯',
-      msg:`<strong>Each remaining week — Sales target: ${fc(wS)}</strong> — Beer ${fc(cats['Beer'].projSalesPW)} · Wine ${fc(cats['Wine'].projSalesPW)} · Liquor ${fc(cats['Liquor'].projSalesPW)}.`});
-  }
-
-  return alerts.map(a=>`<div class="alert a-${a.t}"><span class="alert-icon">${a.i}</span><span>${a.msg}</span></div>`).join('');
-}
-
-// ─── PERIOD SUMMARY ───────────────────────────────────────────
 function renderPeriodSummary(){
   const isEst=!hasActualEnding();
   const rows=SCATS.map(cat=>{
@@ -935,6 +1093,11 @@ function setWeek(w){
   document.querySelectorAll('.wtab').forEach((t,i)=>t.classList.toggle('active',i+1===w));
   render();
 }
+function setScenarioSales(val){
+  st.scenarioSales=Math.max(0,parseNum(val)||0);
+  renderProjection();
+  saveToStorage();
+}
 function setVal(type,week,cat,day,val){
   const v=Math.max(0,parseNum(val)||0);
   if(type==='p')st.p[week][cat][day]=v;
@@ -1024,10 +1187,34 @@ function saveToStorage() {
 
 function loadFromStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Try v5 key first, then fall back to v4 key
+    let raw = localStorage.getItem(STORAGE_KEY);
+    let isV4Migration = false;
+    if (!raw) {
+      raw = localStorage.getItem('fellowbar_tracker_v4');
+      if (raw) isV4Migration = true;
+    }
     if (!raw) return false;
     const data = JSON.parse(raw);
-    if (!data || data.version !== 5) return false;
+    if (!data) return false;
+
+    // Accept v5 data directly, or v4 data (which uses {st:{...}, setup:{...}})
+    if (!isV4Migration && data.version !== 5) return false;
+
+    // Normalize v4 structure: {st, setup} → {weeks: st, setup}
+    if (isV4Migration) {
+      data.weeks = data.st || {};
+      // Rename Shamrock/Mutual → Consumables in purchase data
+      for (let w = 1; w <= 4; w++) {
+        if (data.weeks.p && data.weeks.p[w] && data.weeks.p[w]['Shamrock/Mutual']) {
+          data.weeks.p[w]['Consumables'] = data.weeks.p[w]['Shamrock/Mutual'];
+          delete data.weeks.p[w]['Shamrock/Mutual'];
+        }
+      }
+      // Carry scenarioSales if present
+      if (data.weeks.scenarioSales) data.weeks.scenarioSales = data.weeks.scenarioSales;
+    }
+
     // Restore setup fields
     const s = data.setup;
     if (s.pName) $('pName').value = s.pName;
@@ -1047,6 +1234,7 @@ function loadFromStorage() {
     if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
     // Restore week data
     if (data.weeks) {
+      if (data.weeks.scenarioSales) st.scenarioSales = data.weeks.scenarioSales;
       for (let w = 1; w <= 4; w++) {
         if (data.weeks.p && data.weeks.p[w]) {
           const allCats = [...PCATS];
@@ -1062,6 +1250,8 @@ function loadFromStorage() {
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
       }
     }
+    // If migrated from v4, save in v5 format so future loads use the new key
+    if (isV4Migration) saveToStorage();
     return true;
   } catch(e) { return false; }
 }
