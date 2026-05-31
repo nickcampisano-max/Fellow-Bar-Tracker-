@@ -829,10 +829,9 @@ function renderProjection(){
   let scenPlannerHtml='';
   if(remWeeks.length>0){
     const scenCalc=wkSales=>{
-      const totS=totalActSales+wkSales*weeksLeft;
-      const budget=Math.max(0,(tgt/100)*totS-totalActCostPurch);
-      const wkP=weeksLeft>0?budget/weeksLeft:0;
-      return{sales:wkSales,purch:wkP,costPct:wkSales>0?(wkP/wkSales)*100:0};
+      // Simple: what do I need to order this week to run at the cost target?
+      const wkP=wkSales*(tgt/100);
+      return{sales:wkSales,purch:wkP};
     };
     const velSalesWk=wS;
     // "Your Estimate" is pinned to st.scenarioSales — only changes when manager types a new number.
