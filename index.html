@@ -841,12 +841,13 @@ function renderProjection(){
       :'';
     const sc={e:scenCalc(estimateSales,tgt),v:scenCalc(velSalesWk,tgt),s:scenCalc(velSalesWk*1.15,tgt)};
 
-    // Custom column — any one field drives the other two
-    const cpPct  = st.customPct   > 0 ? st.customPct   : tgt;
-    const cpSales= st.customSales > 0 ? st.customSales : estimateSales;
-    const cpPurch= cpSales * (cpPct/100);
-    const cpPctCol=cpPct<=tgt?'var(--ok)':cpPct<=tgt*1.1?'var(--warn)':'var(--err)';
-    const cpAnySet=st.customPct>0||st.customSales>0;
+    // Custom % column
+    const cpIsSet=st.customPct>0;
+    const cp=st.customPct>0?st.customPct:tgt;
+    const cpCol=cp<=tgt?'var(--ok)':cp<=tgt*1.1?'var(--warn)':'var(--err)';
+    const cpOrderTarget=estimateSales*(cp/100);
+    const velAvgPurch=SCATS.reduce((s,c)=>s+vel[c].avgP,0);
+    const cpSalesNeeded=cp>0?velAvgPurch/(cp/100):0;
 
     scenPlannerHtml=`
   <div style="margin-top:18px;border-top:1px solid var(--divider);padding-top:16px">
@@ -870,7 +871,15 @@ function renderProjection(){
         <thead>
           <tr>
             <th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--muted);font-weight:600;background:var(--off)"></th>
-            <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#a78bfa;background:rgba(167,139,250,.12)">Custom 🎛️</th>
+            <th style="text-align:center;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#a78bfa;background:rgba(167,139,250,.12)">
+              Custom&nbsp;%<br>
+              <input type="text" inputmode="decimal"
+                value="${cpIsSet?st.customPct:''}"
+                placeholder="${fp(tgt)}"
+                onchange="setCustomPct(this.value)"
+                onfocus="this.select()"
+                style="width:62px;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-weight:700;text-align:center;padding:3px 6px">
+            </th>
             <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Your Estimate${estIsSet?'&nbsp;📌':''}</th>
             <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity ↻</th>
             <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch ↻</th>
@@ -879,46 +888,28 @@ function renderProjection(){
         <tbody>
           <tr style="border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Weekly Sales</td>
-            <td style="text-align:center;padding:4px 8px">
-              <div class="dollar" style="max-width:110px;margin:0 auto">
-                <input class="fin" type="text" inputmode="decimal"
-                  value="${st.customSales>0?fd(cpSales,0):''}"
-                  placeholder="${fc(estimateSales)}"
-                  onchange="setCustomSales(this.value)"
-                  onfocus="this.select()"
-                  style="font-size:var(--xs);font-weight:600">
-              </div>
-            </td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600;color:var(--muted);font-style:italic">${fc(estimateSales)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600">${fc(sc.e.sales)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600">${fc(sc.v.sales)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600">${fc(sc.s.sales)}</td>
           </tr>
           <tr style="background:var(--off);border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Order Target</td>
-            <td style="text-align:center;padding:4px 8px">
-              <div class="dollar" style="max-width:110px;margin:0 auto">
-                <input class="fin" type="text" inputmode="decimal"
-                  value="${cpAnySet?fd(cpPurch,0):''}"
-                  placeholder="${fc(cpSales*(tgt/100))}"
-                  onchange="setCustomPurch(this.value)"
-                  onfocus="this.select()"
-                  style="font-size:var(--xs);font-weight:700">
-              </div>
-            </td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(cpOrderTarget)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(sc.e.purch)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(sc.v.purch)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(sc.s.purch)}</td>
           </tr>
           <tr style="border-top:1px solid var(--divider)">
-            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Pour Cost %</td>
-            <td style="text-align:center;padding:4px 8px">
-              <input type="text" inputmode="decimal"
-                value="${st.customPct>0?st.customPct:''}"
-                placeholder="${fp(tgt)}"
-                onchange="setCustomPct(this.value)"
-                onfocus="this.select()"
-                style="width:72px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:${cpPctCol};font-size:var(--sm);font-weight:700;text-align:center;padding:4px 6px">
-            </td>
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Sales Needed<br><span style="font-size:9px;color:var(--faint)">(at vel. order pace)</span></td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700;color:${cpIsSet?'var(--text)':'var(--faint)'}">${cpIsSet?fc(cpSalesNeeded):'—'}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);color:var(--faint)">—</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);color:var(--faint)">—</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);color:var(--faint)">—</td>
+          </tr>
+          <tr style="background:var(--off);border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Pour Cost</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:${cpCol}">${fp(cp)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
             <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
@@ -926,7 +917,7 @@ function renderProjection(){
         </tbody>
       </table>
     </div>
-    <div style="font-size:10px;color:var(--faint);margin-top:6px">Custom column: enter any one value — the others calculate automatically · Stretch = +15% current pace</div>
+    <div style="font-size:10px;color:var(--faint);margin-top:6px">Custom %: Order Target uses your sales estimate · Sales Needed shows what sales you'd need at current order pace · Stretch = +15% current pace</div>
   </div>`;
   }
 
