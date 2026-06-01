@@ -338,7 +338,7 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{}, scenarioSales:0 };
+let st = { week:1, p:{}, s:{}, notes:{}, scenarioSales:0, customPct:0 };
 for(let w=1;w<=4;w++){
   st.p[w]={};st.s[w]={};st.notes[w]='';
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
@@ -828,70 +828,99 @@ function renderProjection(){
   // ── Scenario planner ─────────────────────────────────────────
   let scenPlannerHtml='';
   if(remWeeks.length>0){
-    const scenCalc=wkSales=>{
-      // Simple: what do I need to order this week to run at the cost target?
-      const wkP=wkSales*(tgt/100);
+    const scenCalc=(wkSales,pct)=>{
+      const wkP=wkSales*(pct/100);
       return{sales:wkSales,purch:wkP};
     };
     const velSalesWk=wS;
-    // "Your Estimate" is pinned to st.scenarioSales — only changes when manager types a new number.
-    // Velocity and Stretch update dynamically as data comes in.
     const estimateSales=st.scenarioSales>0?st.scenarioSales:velSalesWk;
-    const sc={e:scenCalc(estimateSales),v:scenCalc(velSalesWk),s:scenCalc(velSalesWk*1.15)};
-    const sCol=p=>p<=tgt?'var(--ok)':p<=tgt*1.1?'var(--warn)':'var(--err)';
     const estIsSet=st.scenarioSales>0;
     const estDiff=estIsSet?(estimateSales-velSalesWk):0;
     const estDiffStr=estIsSet&&Math.abs(estDiff)>50
       ?`<span style="font-size:10px;color:${estDiff<0?'var(--err)':'var(--ok)'};margin-left:6px">(${estDiff>0?'+':''}${fc(estDiff)} vs pace)</span>`
       :'';
+    const sc={e:scenCalc(estimateSales,tgt),v:scenCalc(velSalesWk,tgt),s:scenCalc(velSalesWk*1.15,tgt)};
+
+    // Custom % column
+    const cpIsSet=st.customPct>0;
+    const cp=st.customPct>0?st.customPct:tgt;
+    const cpCol=cp<=tgt?'var(--ok)':cp<=tgt*1.1?'var(--warn)':'var(--err)';
+    // Order target at custom %: estimate sales × custom %
+    const cpOrderTarget=estimateSales*(cp/100);
+    // Sales needed: if you want to run at cp% and your velocity orders are what they are,
+    // what sales do you need? → vel_avg_purch / (cp/100)
+    const velAvgPurch=SCATS.reduce((s,c)=>s+vel[c].avgP,0);
+    const cpSalesNeeded=cp>0?velAvgPurch/(cp/100):0;
+
     scenPlannerHtml=`
   <div style="margin-top:18px;border-top:1px solid var(--divider);padding-top:16px">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📊 SCENARIO PLANNER</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-      <span style="font-size:var(--xs);color:var(--muted)">Your weekly sales estimate:</span>
-      <div class="dollar" style="max-width:140px">
-        <input class="fin" type="text" inputmode="decimal"
-          value="${estIsSet?fd(estimateSales,0):''}"
-          placeholder="${fc(velSalesWk)}"
-          onchange="setScenarioSales(this.value)"
-          onfocus="this.select()">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:6px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:var(--xs);color:var(--muted)">Your weekly sales estimate:</span>
+        <div class="dollar" style="max-width:140px">
+          <input class="fin" type="text" inputmode="decimal"
+            value="${estIsSet?fd(estimateSales,0):''}"
+            placeholder="${fc(velSalesWk)}"
+            onchange="setScenarioSales(this.value)"
+            onfocus="this.select()">
+        </div>
+        ${estDiffStr}
       </div>
-      ${estDiffStr}
     </div>
     <div style="font-size:10px;color:var(--faint);font-style:italic;margin-bottom:12px">📌 Your Estimate is pinned — only changes when you update it &nbsp;·&nbsp; Velocity &amp; Stretch update live</div>
     <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:360px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;min-width:480px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
         <thead>
           <tr>
             <th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--muted);font-weight:600;background:var(--off)"></th>
-            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Your Estimate${estIsSet?'&nbsp;📌':''}</th>
-            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity ↻</th>
-            <th style="text-align:center;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch ↻</th>
+            <th style="text-align:center;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#a78bfa;background:rgba(167,139,250,.12)">
+              Custom&nbsp;%<br>
+              <input type="text" inputmode="decimal"
+                value="${cpIsSet?st.customPct:''}"
+                placeholder="${fp(tgt)}"
+                onchange="setCustomPct(this.value)"
+                onfocus="this.select()"
+                style="width:62px;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-weight:700;text-align:center;padding:3px 6px">
+            </th>
+            <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-hl)">Your Estimate${estIsSet?'&nbsp;📌':''}</th>
+            <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:var(--primary-hl)">Velocity ↻</th>
+            <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-hl)">Stretch ↻</th>
           </tr>
         </thead>
         <tbody>
           <tr style="border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Weekly Sales</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.e.sales)}</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.v.sales)}</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:600">${fc(sc.s.sales)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600;color:var(--muted);font-style:italic">${fc(estimateSales)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600">${fc(sc.e.sales)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600">${fc(sc.v.sales)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:600">${fc(sc.s.sales)}</td>
           </tr>
           <tr style="background:var(--off);border-top:1px solid var(--divider)">
             <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Order Target</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.e.purch)}</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.v.purch)}</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--xs);font-weight:700">${fc(sc.s.purch)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(cpOrderTarget)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(sc.e.purch)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(sc.v.purch)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700">${fc(sc.s.purch)}</td>
           </tr>
           <tr style="border-top:1px solid var(--divider)">
-            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Pour Cost Goal</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
-            <td style="text-align:center;padding:8px 12px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Sales Needed<br><span style="font-size:9px;color:var(--faint)">(at vel. order pace)</span></td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);font-weight:700;color:${cpIsSet?'var(--text)':'var(--faint)'}">${cpIsSet?fc(cpSalesNeeded):'—'}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);color:var(--faint)">—</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);color:var(--faint)">—</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--xs);color:var(--faint)">—</td>
+          </tr>
+          <tr style="background:var(--off);border-top:1px solid var(--divider)">
+            <td style="padding:8px 12px;font-size:var(--xs);color:var(--muted)">Pour Cost</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:${cpCol}">${fp(cp)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
+            <td style="text-align:center;padding:8px 10px;font-size:var(--sm);font-weight:700;color:var(--ok)">${fp(tgt)}</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <div style="font-size:10px;color:var(--faint);margin-top:6px">Stretch = +15% current pace · Targets assume period closes at ${fp(tgt)}</div>
+    <div style="font-size:10px;color:var(--faint);margin-top:6px">Custom % · Order Target uses your sales estimate · Sales Needed uses velocity order pace · Stretch = +15% current pace</div>
   </div>`;
   }
 
@@ -1105,6 +1134,12 @@ function setScenarioSales(val){
   renderProjection();
   saveToStorage();
 }
+function setCustomPct(val){
+  const v=parseFloat(val)||0;
+  st.customPct=Math.min(Math.max(0,v),100);
+  renderProjection();
+  saveToStorage();
+}
 function setVal(type,week,cat,day,val){
   const v=Math.max(0,parseNum(val)||0);
   if(type==='p')st.p[week][cat][day]=v;
@@ -1242,6 +1277,7 @@ function loadFromStorage() {
     // Restore week data
     if (data.weeks) {
       if (data.weeks.scenarioSales) st.scenarioSales = data.weeks.scenarioSales;
+      if (data.weeks.customPct) st.customPct = data.weeks.customPct;
       for (let w = 1; w <= 4; w++) {
         if (data.weeks.p && data.weeks.p[w]) {
           const allCats = [...PCATS];
