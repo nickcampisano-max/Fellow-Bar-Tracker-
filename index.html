@@ -827,7 +827,7 @@ function renderProjection(){
 
   // ── Scenario planner ─────────────────────────────────────────
   let scenPlannerHtml='';
-  if(remWeeks.length>0){
+  if(true){// always show scenario planner
     const scenCalc=(wkSales,pct)=>{
       const wkP=wkSales*(pct/100);
       return{sales:wkSales,purch:wkP};
