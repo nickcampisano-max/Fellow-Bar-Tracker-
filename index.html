@@ -593,9 +593,20 @@ function renderKPIs(){
   const isEst=!hasActualEnding();
 
   // Total inventory drift
-  let totBeg=totalBegInv(),totEnd=0;
-  SCATS.forEach(c=>{totEnd+=catCalc(c,4).endingUsed;});
-  const drift=totEnd-totBeg;
+  // Mid-period: use blended target (not per-category) so the estimate aligns with
+  // the stated 21.5% goal and isn't skewed by sales mix (e.g. wine-heavy at 33% target).
+  // Formula: physPurch − (totalSales × blendedTarget%) = net inventory change estimate.
+  // At period close, actual ending inventory from MarginEdge gives the true number.
+  const totBeg=totalBegInv();
+  let drift;
+  if(hasActualEnding()){
+    let totEnd=0;
+    SCATS.forEach(c=>{totEnd+=catCalc(c,4).endingUsed;});
+    drift=totEnd-totBeg;
+  } else {
+    const totPhysPurch=SCATS.reduce((s,c)=>s+periodPurch(4,c),0);
+    drift=totPhysPurch-(totS*(tgt/100));
+  }
 
   // Update auto total display
   $('begTotalAuto').textContent=fc(gv('begBeer')+gv('begWine')+gv('begLiquor'));
@@ -618,7 +629,7 @@ function renderKPIs(){
       bc:adjCost===null||isEst?'b-est':adjCost<=tgt?'b-ok':adjCost<=tgt*1.08?'b-warn':'b-err'},
     {lbl:'Inventory Drift'+(isEst?' (Est.)':''),
       val:(drift>=0?'+':'')+fcs(drift),
-      sub:`Opening: ${fc(totBeg)}${isEst?' · Est. ending at cost targets':'· Actual ending used'}`,
+      sub:isEst?`Opening: ${fc(totBeg)} · Est. = purchases vs. ${fp(tgt)} of sales`:`Opening: ${fc(totBeg)} · Actual ending used`,
       badge:Math.abs(drift)<200?'Balanced ✓':drift>0?'Building — watch next period':'Drawing down — verify intent',
       bc:Math.abs(drift)<200?'b-ok':'b-warn'}
   ];
