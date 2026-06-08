@@ -592,22 +592,18 @@ function renderKPIs(){
   const tgt=gv('costTarget');
   const isEst=!hasActualEnding();
 
-  // Total inventory drift
-  // Mid-period: use blended target (not per-category) so the estimate aligns with
-  // the stated 21.5% goal and isn't skewed by sales mix (e.g. wine-heavy at 33% target).
-  // Formula: physPurch − (totalSales × blendedTarget%) = net inventory change estimate.
-  // At period close, actual ending inventory from MarginEdge gives the true number.
+  // Total inventory drift + estimated ending by category
   const totBeg=totalBegInv();
-  let drift;
+  const catEndings={};
+  SCATS.forEach(c=>{catEndings[c]=catCalc(c,4).endingUsed;});
+  let drift, estTotEnd;
   if(hasActualEnding()){
-    let totEnd=0;
-    SCATS.forEach(c=>{totEnd+=catCalc(c,4).endingUsed;});
-    drift=totEnd-totBeg;
+    estTotEnd=SCATS.reduce((s,c)=>s+catEndings[c],0);
+    drift=estTotEnd-totBeg;
   } else {
-    // Use total purchases (incl. consumables) vs. blended target × sales.
-    // Consumables are part of pour cost so must be included in the comparison.
-    // drift ≈ 0 means purchasing is right on target pace; positive = over-purchasing; negative = under-purchasing or beating target.
+    // Blended formula: total purchases (incl. consumables) vs. blended target × sales
     drift=totP-(totS*(tgt/100));
+    estTotEnd=totBeg+drift;
   }
 
   // Update auto total display
@@ -633,7 +629,15 @@ function renderKPIs(){
       val:(drift>=0?'+':'')+fcs(drift),
       sub:isEst?`Opening: ${fc(totBeg)} · Est. = purchases vs. ${fp(tgt)} of sales`:`Opening: ${fc(totBeg)} · Actual ending used`,
       badge:Math.abs(drift)<200?'Balanced ✓':drift>0?'Building — watch next period':'Drawing down — verify intent',
-      bc:Math.abs(drift)<200?'b-ok':'b-warn'}
+      bc:Math.abs(drift)<200?'b-ok':'b-warn',
+      detail:`
+        <div style="margin-top:10px;border-top:1px solid var(--divider);padding-top:8px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:6px">Est. Ending Inventory${isEst?' (est.)':''}</div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--xs);margin-bottom:3px"><span style="color:var(--muted)">Beer</span><span style="font-weight:600">${fc(catEndings['Beer'])}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--xs);margin-bottom:3px"><span style="color:var(--muted)">Wine</span><span style="font-weight:600">${fc(catEndings['Wine'])}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--xs);margin-bottom:6px"><span style="color:var(--muted)">Liquor</span><span style="font-weight:600">${fc(catEndings['Liquor'])}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--xs);border-top:1px solid var(--divider);padding-top:5px"><span style="color:var(--muted);font-weight:700">Est. Total</span><span style="font-weight:700;color:var(--text)">${fc(estTotEnd)}</span></div>
+        </div>`}
   ];
 
   $('kpi-row').innerHTML=kpis.map(k=>`
@@ -642,6 +646,7 @@ function renderKPIs(){
       <div class="kpi-val">${k.val}</div>
       <div class="kpi-sub">${k.sub}</div>
       <span class="badge ${k.bc}">${k.badge}</span>
+      ${k.detail||''}
     </div>`).join('');
 }
 
