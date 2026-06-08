@@ -604,8 +604,10 @@ function renderKPIs(){
     SCATS.forEach(c=>{totEnd+=catCalc(c,4).endingUsed;});
     drift=totEnd-totBeg;
   } else {
-    const totPhysPurch=SCATS.reduce((s,c)=>s+periodPurch(4,c),0);
-    drift=totPhysPurch-(totS*(tgt/100));
+    // Use total purchases (incl. consumables) vs. blended target × sales.
+    // Consumables are part of pour cost so must be included in the comparison.
+    // drift ≈ 0 means purchasing is right on target pace; positive = over-purchasing; negative = under-purchasing or beating target.
+    drift=totP-(totS*(tgt/100));
   }
 
   // Update auto total display
