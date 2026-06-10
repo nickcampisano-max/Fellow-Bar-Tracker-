@@ -911,6 +911,37 @@ function renderProjection(){
   <div style="margin-top:12px;margin-bottom:4px">${statusBadge}</div>`
   :`<div style="margin-bottom:8px">${statusBadge}<div class="alert a-ok" style="margin-top:10px"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div></div>`;
 
+  // ── Inventory drift narrative ─────────────────────────────────
+  let driftNarr='';
+  if(we>0&&!hasActualEnding()){
+    let totActPAll=0;
+    for(let ww=1;ww<=we;ww++) totActPAll+=wTotP(ww);
+    const driftAmt=totActPAll-(totalActSales*(tgt/100));
+    const totBegN=totalBegInv();
+    const estEndN=totBegN+driftAmt;
+    const absDrift=Math.abs(driftAmt);
+    let driftIcon,driftClass,driftMsg;
+    if(absDrift<200){
+      driftIcon='✅';driftClass='a-ok';
+      driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — right in line with where the period started. Purchasing and sales are well-balanced. Follow the weekly order targets above to close clean.`;
+    } else if(driftAmt>0){
+      driftIcon='📦';driftClass='a-warn';
+      driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(driftAmt)} above opening</strong>. Purchasing is running ahead of what sales are burning through at cost. The weekly order targets above already account for this — follow those numbers and inventory will work its way back in line by close.`;
+    } else {
+      if(absDrift<500){
+        driftIcon='📉';driftClass='a-ok';
+        driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(absDrift)} below opening</strong>. Sales are outpacing purchasing at cost — a healthy sign. Keep an eye on stock levels and follow the weekly order targets above to finish strong.`;
+      } else {
+        driftIcon='⚠️';driftClass='a-warn';
+        driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(absDrift)} below opening</strong>. Inventory is drawing down faster than expected — sales are significantly outpacing purchasing at cost. ${weeksLeft>0?'The weekly order targets above reflect current sales pace. Follow those and verify stock levels to make sure nothing is running short.':'Verify stock levels before the close count.'}`;
+      }
+    }
+    driftNarr=`<div class="alert ${driftClass}" style="margin-top:8px;margin-bottom:4px">
+      <span class="alert-icon">${driftIcon}</span>
+      <span><strong>Inventory:</strong> ${driftMsg}</span>
+    </div>`;
+  }
+
   // ── Scenario planner ─────────────────────────────────────────
   let scenPlannerHtml='';
   if(true){// always show scenario planner
@@ -1091,6 +1122,7 @@ function renderProjection(){
       </div>
     </div>
     ${managerCards}
+    ${driftNarr}
     ${scenPlannerHtml}
     <details class="op-details">
       <summary>OPERATOR DETAILS</summary>
