@@ -1254,33 +1254,11 @@ function saveToStorage() {
 
 function loadFromStorage() {
   try {
-    // Try v5 key first, then fall back to v4 key
     let raw = localStorage.getItem(STORAGE_KEY);
-    let isV4Migration = false;
-    if (!raw) {
-      raw = localStorage.getItem('fellowbar_tracker_v4');
-      if (raw) isV4Migration = true;
-    }
     if (!raw) return false;
     const data = JSON.parse(raw);
     if (!data) return false;
-
-    // Accept v5 data directly, or v4 data (which uses {st:{...}, setup:{...}})
-    if (!isV4Migration && data.version !== 5) return false;
-
-    // Normalize v4 structure: {st, setup} → {weeks: st, setup}
-    if (isV4Migration) {
-      data.weeks = data.st || {};
-      // Rename Shamrock/Mutual → Consumables in purchase data
-      for (let w = 1; w <= 4; w++) {
-        if (data.weeks.p && data.weeks.p[w] && data.weeks.p[w]['Shamrock/Mutual']) {
-          data.weeks.p[w]['Consumables'] = data.weeks.p[w]['Shamrock/Mutual'];
-          delete data.weeks.p[w]['Shamrock/Mutual'];
-        }
-      }
-      // Carry scenarioSales if present
-      if (data.weeks.scenarioSales) data.weeks.scenarioSales = data.weeks.scenarioSales;
-    }
+    if (data.version !== 5) return false;
 
     // Restore setup fields
     const s = data.setup;
@@ -1319,8 +1297,6 @@ function loadFromStorage() {
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
       }
     }
-    // If migrated from v4, save in v5 format so future loads use the new key
-    if (isV4Migration) saveToStorage();
     return true;
   } catch(e) { return false; }
 }
