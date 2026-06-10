@@ -304,6 +304,11 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
         <div class="pct"><input class="fin" id="tgtConsumables" type="text" inputmode="decimal" value="3" oninput="render()"></div>
         <div class="field-note">Target: 3% or under · Tracked for cost only</div>
       </div>
+      <div class="field">
+        <label class="flbl">Expected Weekly Sales</label>
+        <div class="dollar"><input class="fin" id="expWeeklySales" type="text" inputmode="decimal" value="8000" oninput="render()"></div>
+        <div class="field-note">Used for projections until Week 1 is complete</div>
+      </div>
     </div>
   </div>
 
@@ -700,13 +705,24 @@ function renderProjection(){
   const lyData=periodNum&&HISTORY_LY[periodNum]?HISTORY_LY[periodNum]:null;
 
   // Velocity from complete weeks only; blend 50/50 with LY when only 1 week complete
+  // When Week 1 is still in progress, use Expected Weekly Sales from Period Setup instead
+  const week1InProgress = velWks===1&&!isWeekComplete(1);
   const vel={};
+  // Sales mix for baseline (Beer 7%, Wine 29%, Liquor 64% — based on P6 actuals)
+  const salesMix={Beer:0.07,Wine:0.29,Liquor:0.64};
   SCATS.forEach(cat=>{
-    const p=periodPurch(velWks,cat)+(cat==='Liquor'?periodPurch(velWks,'Consumables'):0);
-    const s=periodSales(velWks,cat);
-    const curAvgS=s/velWks;
-    const curAvgP=p/velWks;
-    if(velWks===1&&lyData){
+    let curAvgS,curAvgP;
+    if(week1InProgress){
+      const expS=gv('expWeeklySales')||8000;
+      curAvgS=expS*(salesMix[cat]||0.33);
+      curAvgP=curAvgS*(catTgt(cat)/100);
+    } else {
+      const p=periodPurch(velWks,cat)+(cat==='Liquor'?periodPurch(velWks,'Consumables'):0);
+      const s=periodSales(velWks,cat);
+      curAvgS=s/velWks;
+      curAvgP=p/velWks;
+    }
+    if(velWks===1&&lyData&&!week1InProgress){
       const lyAvgS=lyData[cat]/4;
       const lyAvgP=lyAvgS*(catTgt(cat)/100);
       vel[cat]={avgS:curAvgS*0.5+lyAvgS*0.5,avgP:curAvgP*0.5+lyAvgP*0.5,blended:true};
@@ -1245,6 +1261,7 @@ function saveToStorage() {
         tgtWine: $('tgtWine').value,
         tgtLiquor: $('tgtLiquor').value,
         tgtConsumables: $('tgtConsumables').value,
+        expWeeklySales: $('expWeeklySales').value,
       },
       weeks: st
     };
@@ -1277,6 +1294,7 @@ function loadFromStorage() {
     if (s.tgtWine) $('tgtWine').value = s.tgtWine;
     if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
     if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
+    if (s.expWeeklySales) $('expWeeklySales').value = s.expWeeklySales;
     // Restore week data
     if (data.weeks) {
       if (data.weeks.scenarioSales) st.scenarioSales = data.weeks.scenarioSales;
