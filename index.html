@@ -310,6 +310,26 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
         <div class="field-note">Used for projections until Week 1 is complete</div>
       </div>
     </div>
+
+    <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Prior Period Reference — Weekly Sales (for trend comparison in daily tracker)</div>
+    <div class="setup-grid" style="margin-top:8px">
+      <div class="field">
+        <label class="flbl">Prior Period Week 1</label>
+        <div class="dollar"><input class="fin" id="ppW1" type="text" inputmode="decimal" placeholder="e.g. 9768" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Prior Period Week 2</label>
+        <div class="dollar"><input class="fin" id="ppW2" type="text" inputmode="decimal" placeholder="e.g. 8500" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Prior Period Week 3</label>
+        <div class="dollar"><input class="fin" id="ppW3" type="text" inputmode="decimal" placeholder="e.g. 8200" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Prior Period Week 4</label>
+        <div class="dollar"><input class="fin" id="ppW4" type="text" inputmode="decimal" placeholder="e.g. 7800" oninput="render()"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ── KPI ROW ────────────────────────────────────────────── -->
@@ -537,6 +557,37 @@ function renderWeek(w){
   const tgt=gv('costTarget');
   const cc=estC===null?'cc-neutral':estC<=tgt?'cc-ok':estC<=tgt*1.1?'cc-warn':'cc-err';
 
+  // ── Reference rows ────────────────────────────────────────────
+  // Prior week (automatic, weeks 2-4)
+  let priorWeekRow='';
+  if(w>1&&hasData(w-1)){
+    const pwCells=Array(7).fill(0).map((_,i)=>{
+      const v=SCATS.reduce((s,c)=>s+st.s[w-1][c][i],0);
+      return`<td style="text-align:right;color:var(--muted);font-size:11px">${v>0?fc(v):'—'}</td>`;
+    }).join('');
+    const pwTot=wTotS(w-1);
+    priorWeekRow=`<tr style="background:var(--off)">
+      <td style="padding-left:10px;color:var(--muted);font-size:11px;font-style:italic">↑ Prior Week</td>
+      ${pwCells}
+      <td style="text-align:right;color:var(--muted);font-size:11px;font-weight:600">${pwTot>0?fc(pwTot):'—'}</td></tr>`;
+  }
+
+  // Prior period average (from Period Setup inputs)
+  let priorPeriodRow='';
+  const ppW=gv(`ppW${w}`);
+  if(ppW>0){
+    const ppAvg=ppW/7;
+    const ppCells=Array(7).fill(0).map(()=>`<td style="text-align:right;color:var(--muted);font-size:11px">${fc(ppAvg)}</td>`).join('');
+    priorPeriodRow=`<tr style="background:var(--off)">
+      <td style="padding-left:10px;color:var(--muted);font-size:11px;font-style:italic">↑ Prior Period Avg/day</td>
+      ${ppCells}
+      <td style="text-align:right;color:var(--muted);font-size:11px;font-weight:600">${fc(ppW)}</td></tr>`;
+  }
+
+  const refRows=(priorWeekRow||priorPeriodRow)
+    ?`<tr style="background:var(--off)"><td colspan="9" style="padding:3px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)">— Reference —</td></tr>${priorWeekRow}${priorPeriodRow}`
+    :'';
+
   return`<div class="card">
     <div class="sec-hdr">
       <div><div class="sec-title">Week ${w} — Daily Tracker</div>
@@ -556,6 +607,7 @@ function renderWeek(w){
         ${sRows}
         <tr class="totals-row"><td style="font-weight:700">TOTAL SALES</td>${tsCells}
           <td style="text-align:right"><span class="wtot">${tsW>0?fc(tsW):'—'}</span></td></tr>
+        ${refRows}
         <tr class="section-row"><td colspan="9">— Daily Cost % by Category —</td></tr>
         ${costRows}
         ${consRow}
@@ -1262,6 +1314,10 @@ function saveToStorage() {
         tgtLiquor: $('tgtLiquor').value,
         tgtConsumables: $('tgtConsumables').value,
         expWeeklySales: $('expWeeklySales').value,
+        ppW1: $('ppW1').value,
+        ppW2: $('ppW2').value,
+        ppW3: $('ppW3').value,
+        ppW4: $('ppW4').value,
       },
       weeks: st
     };
@@ -1295,6 +1351,10 @@ function loadFromStorage() {
     if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
     if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
     if (s.expWeeklySales) $('expWeeklySales').value = s.expWeeklySales;
+    if (s.ppW1) $('ppW1').value = s.ppW1;
+    if (s.ppW2) $('ppW2').value = s.ppW2;
+    if (s.ppW3) $('ppW3').value = s.ppW3;
+    if (s.ppW4) $('ppW4').value = s.ppW4;
     // Restore week data
     if (data.weeks) {
       if (data.weeks.scenarioSales) st.scenarioSales = data.weeks.scenarioSales;
