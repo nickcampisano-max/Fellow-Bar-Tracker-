@@ -1202,13 +1202,10 @@ function exportCSV(){
   a.download=pn.replace(/\s+/g,'-')+'-v5.csv';a.click();
 }
 function resetData(){
-  if(!confirm('Clear all purchase and sales data? Setup fields will be kept.'))return;
-  for(let w=1;w<=4;w++){
-    PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
-    SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
-    st.notes[w]='';
-  }
-  render();
+  if(!confirm('Reset tracker? This will clear all data and restore Period 7 defaults.'))return;
+  try { localStorage.removeItem('fellowbar_tracker_v5'); } catch(e) {}
+  try { localStorage.removeItem('fellowbar_tracker_v4'); } catch(e) {}
+  location.reload();
 }
 
 // ─── DARK MODE ────────────────────────────────────────────────
