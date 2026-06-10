@@ -363,9 +363,9 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{}, scenarioSales:0, customPct:0, customSales:0 };
+let st = { week:1, p:{}, s:{}, notes:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
 for(let w=1;w<=4;w++){
-  st.p[w]={};st.s[w]={};st.notes[w]='';
+  st.p[w]={};st.s[w]={};st.notes[w]='';st.events[w]=0;
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
   SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
 }
@@ -615,6 +615,21 @@ function renderWeek(w){
     </table></div>
     <div class="est-banner">
       <div style="flex:1;min-width:240px;margin-top:6px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Event / Buyout Sales</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="dollar" style="max-width:140px">
+                <input class="fin" type="text" inputmode="decimal"
+                  value="${st.events[w]>0?fd(st.events[w],2):''}"
+                  placeholder="—"
+                  onchange="st.events[${w}]=parseNum(this.value);saveToStorage();render()"
+                  onfocus="this.select()">
+              </div>
+              ${st.events[w]>0?`<span style="font-size:10px;color:var(--muted);font-style:italic">Excluded from trend · pour cost unaffected</span>`:'<span style="font-size:10px;color:var(--faint);font-style:italic">One-time events excluded from projections</span>'}
+            </div>
+          </div>
+        </div>
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Week ${w} Notes</div>
         <textarea class="notes-area" placeholder="e.g. Big event Friday drove Liquor spike, short-staffed Tuesday..."
           onchange="st.notes[${w}]=this.value">${st.notes[w]||''}</textarea>
@@ -762,6 +777,8 @@ function renderProjection(){
   const vel={};
   // Sales mix for baseline (Beer 7%, Wine 29%, Liquor 64% — based on P6 actuals)
   const salesMix={Beer:0.07,Wine:0.29,Liquor:0.64};
+  // Check if any event adjustments are active
+  const anyEvents=velWks>0&&Array.from({length:velWks},(_,i)=>i+1).some(ww=>st.events[ww]>0);
   SCATS.forEach(cat=>{
     let curAvgS,curAvgP;
     if(week1InProgress){
@@ -769,9 +786,17 @@ function renderProjection(){
       curAvgS=expS*(salesMix[cat]||0.33);
       curAvgP=curAvgS*(catTgt(cat)/100);
     } else {
+      // Subtract event sales proportionally per week
+      let adjS=0;
+      for(let ww=1;ww<=velWks;ww++){
+        const catS=wSales(ww,cat);
+        const weekTotS=SCATS.reduce((s,c)=>s+wSales(ww,c),0);
+        const evAdj=st.events[ww]||0;
+        const catEvAdj=weekTotS>0?evAdj*(catS/weekTotS):0;
+        adjS+=Math.max(0,catS-catEvAdj);
+      }
       const p=periodPurch(velWks,cat)+(cat==='Liquor'?periodPurch(velWks,'Consumables'):0);
-      const s=periodSales(velWks,cat);
-      curAvgS=s/velWks;
+      curAvgS=adjS/velWks;
       curAvgP=p/velWks;
     }
     if(velWks===1&&lyData&&!week1InProgress){
@@ -1110,7 +1135,7 @@ function renderProjection(){
   </table></div>`:'';
 
   el.innerHTML=`
-  <div class="sec-div">FORECAST — Velocity: ${velWks===1?'Week 1 only':'Weeks 1–'+velWks} (complete) · ${isWeekComplete(we)?'':'Week '+we+' in progress · '}Updates each week</div>
+  <div class="sec-div">FORECAST — Velocity: ${velWks===1?'Week 1 only':'Weeks 1–'+velWks} (complete${anyEvents?' · event-adjusted':''}) · ${isWeekComplete(we)?'':'Week '+we+' in progress · '}Updates each week</div>
   <div class="card card-accent">
     <div class="proj-hdr">
       <div class="proj-icon">
@@ -1405,6 +1430,7 @@ function loadFromStorage() {
           });
         }
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
+        if (data.weeks.events && data.weeks.events[w]) st.events[w] = data.weeks.events[w];
       }
     }
     return true;
