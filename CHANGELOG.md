@@ -4,6 +4,21 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.10] — 2026-06-15
+### Added
+- **Game Plan card** — a teal-bordered callout that appears at the top of each week's tracker panel, above the data table. Write the purchasing strategy for the week (e.g. "Ease up on beer, push liquor, wine on target — shoot for $8k"). Saves automatically when focus leaves the field. Persists across sessions in localStorage. Separate from the bottom "Week Notes" field (which is for recording what happened).
+
+## [v5.9] — 2026-06-15
+### Added
+- **Year-over-Year comparison card** — appears between the KPI row and the weekly tracker. Shows current-period weekly sales pace vs. last year's same period weekly average, broken out by Beer, Wine, Liquor, and Total. Includes $ and % variance with color coding (green = beating LY, red = below LY) and a plain-language summary line at the bottom. Auto-hides until at least one week of data is entered. Updates each time new data is saved.
+
+## [v5.8] — 2026-06-15
+### Added
+- **Per-category inventory drift** — Beer, Wine, and Liquor drift amounts now shown in two places:
+  1. Inventory Drift KPI tile detail panel (alongside the est. ending inventory breakdown)
+  2. Inventory drift narrative in the Forecast section, as a compact sub-line below the main message
+- Color-coded: green = drawing down (healthy), yellow = building above opening, muted = balanced (< $50 swing)
+
 ## [v5.7] — 2026-06-10
 ### Added
 - **Event / Buyout Sales field** — per-week input to flag one-time event revenue (buyouts, private events, etc.). Amount is excluded from velocity/projection calculations so trend data stays accurate. Pour cost math is unaffected — event revenue still counts as real sales. Forecast header shows "event-adjusted" when active.

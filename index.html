@@ -121,6 +121,12 @@ table{border-collapse:collapse;width:100%}
 .notes-area{width:100%;background:var(--off);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 10px;font-size:var(--xs);color:var(--text);resize:vertical;min-height:48px;transition:border-color var(--tr)}
 .notes-area:focus{outline:none;border-color:var(--primary)}
 
+/* GAME PLAN */
+.plan-card{background:var(--primary-hl);border:1.5px solid var(--primary);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:14px}
+.plan-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.plan-area{width:100%;background:transparent;border:none;font:inherit;font-size:var(--xs);color:var(--text);resize:none;min-height:38px;line-height:1.55;outline:none}
+.plan-area::placeholder{color:var(--primary);opacity:.45;font-style:italic}
+
 /* PROJECTION */
 .proj-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .proj-icon{width:32px;height:32px;border-radius:var(--r-md);background:var(--primary-hl);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
@@ -335,6 +341,9 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
   <!-- ── KPI ROW ────────────────────────────────────────────── -->
   <div class="kpi-row" id="kpi-row"></div>
 
+  <!-- ── YEAR-OVER-YEAR ────────────────────────────────────── -->
+  <div id="yoy-section"></div>
+
   <!-- ── WEEK TABS ──────────────────────────────────────────── -->
   <div class="week-nav">
     <div class="wtabs" role="tablist">
@@ -363,9 +372,9 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
+let st = { week:1, p:{}, s:{}, notes:{}, plan:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
 for(let w=1;w<=4;w++){
-  st.p[w]={};st.s[w]={};st.notes[w]='';st.events[w]=0;
+  st.p[w]={};st.s[w]={};st.notes[w]='';st.plan[w]='';st.events[w]=0;
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
   SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
 }
@@ -593,6 +602,15 @@ function renderWeek(w){
       <div><div class="sec-title">Week ${w} — Daily Tracker</div>
         <div class="sec-sub">${wkRange(w)} &nbsp;·&nbsp; Enter purchases and sales as they occur</div></div>
     </div>
+    <div class="plan-card">
+      <div class="plan-label">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 4.079 4.079-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+        Game Plan — Week ${w}
+      </div>
+      <textarea class="plan-area" rows="2"
+        placeholder="e.g. Ease up on beer — ended last week above opening. Liquor on pace, keep same order. Wine looking great — purchase to goal. Shoot for $8k in sales."
+        onchange="st.plan[${w}]=this.value;saveToStorage()">${st.plan[w]||''}</textarea>
+    </div>
     <div class="tbl-wrap"><table class="tk-tbl">
       <thead><tr>
         <th style="text-align:left;min-width:135px"></th>${dayHdrs}
@@ -667,7 +685,8 @@ function renderKPIs(){
   // Total inventory drift + estimated ending by category
   const totBeg=totalBegInv();
   const catEndings={};
-  SCATS.forEach(c=>{catEndings[c]=catCalc(c,4).endingUsed;});
+  const catDrifts={};
+  SCATS.forEach(c=>{const r=catCalc(c,4);catEndings[c]=r.endingUsed;catDrifts[c]=r.drift;});
   let drift, estTotEnd;
   if(hasActualEnding()){
     estTotEnd=SCATS.reduce((s,c)=>s+catEndings[c],0);
@@ -709,6 +728,10 @@ function renderKPIs(){
           <div style="display:flex;justify-content:space-between;font-size:var(--xs);margin-bottom:3px"><span style="color:var(--muted)">Wine</span><span style="font-weight:600">${fc(catEndings['Wine'])}</span></div>
           <div style="display:flex;justify-content:space-between;font-size:var(--xs);margin-bottom:6px"><span style="color:var(--muted)">Liquor</span><span style="font-weight:600">${fc(catEndings['Liquor'])}</span></div>
           <div style="display:flex;justify-content:space-between;font-size:var(--xs);border-top:1px solid var(--divider);padding-top:5px"><span style="color:var(--muted);font-weight:700">Est. Total</span><span style="font-weight:700;color:var(--text)">${fc(estTotEnd)}</span></div>
+        </div>
+        <div style="margin-top:8px;border-top:1px solid var(--divider);padding-top:8px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:6px">Drift by Category${isEst?' (est.)':''}</div>
+          ${SCATS.map(c=>{const d=catDrifts[c];const col=Math.abs(d)<50?'var(--muted)':d>0?'var(--warn)':'var(--ok)';return`<div style="display:flex;justify-content:space-between;font-size:var(--xs);margin-bottom:3px"><span style="color:var(--muted)">${c}</span><span style="font-weight:600;color:${col}">${d>=0?'+':''}${fcs(d)}</span></div>`;}).join('')}
         </div>`}
   ];
 
@@ -863,9 +886,33 @@ function renderProjection(){
     statusBadge=`<span class="badge b-neutral" style="font-size:11px;padding:4px 12px">🏁 Period Complete</span>`;
   }
 
+  // ── Expected-sales targets for weekly cards ────────────────────
+  // Uses Period Setup "Expected Weekly Sales" so cards show realistic,
+  // actionable targets. Velocity is preserved for the scenario planner.
+  const expWeeklyS=gv('expWeeklySales')||8000;
+  const velTotS=SCATS.reduce((s,c)=>s+vel[c].avgS,0);
+  // Distribute expWeeklyS by actual velocity sales mix per category
+  const expCatS={};
+  SCATS.forEach(cat=>{
+    expCatS[cat]=velTotS>0?expWeeklyS*(vel[cat].avgS/velTotS):expWeeklyS*salesMix[cat];
+  });
+  // Pour cost budget using expWeeklyS for remaining weeks
+  const totalProjRemSalesExp=expWeeklyS*weeksLeft;
+  const totalPeriodSalesExp=totalActSales+totalProjRemSalesExp;
+  const totalPurchBudgetExp=(tgt/100)*totalPeriodSalesExp;
+  const remainingBudgetExp=Math.max(0,totalPurchBudgetExp-totalActCostPurch);
+  const perWeekBudgetExp=weeksLeft>0?remainingBudgetExp/weeksLeft:0;
+  // Per-category order targets weighted by expected sales × catTgt
+  const catWeightTotalExp=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*expCatS[c]*weeksLeft,0);
+  const expCatP={};
+  SCATS.forEach(cat=>{
+    const catWt=catWeightTotalExp>0?(catTgt(cat)/100)*expCatS[cat]*weeksLeft/catWeightTotalExp:0;
+    expCatP[cat]=perWeekBudgetExp*catWt;
+  });
+
   // ── Manager target cards ───────────────────────────────────────
-  const wP=SCATS.reduce((s,c)=>s+cats[c].projPurchPW,0);
-  const wS=SCATS.reduce((s,c)=>s+cats[c].projSalesPW,0);
+  const wP=perWeekBudgetExp;
+  const wS=expWeeklyS;
 
   // Current week in-progress card
   let inProgressCard='';
@@ -913,18 +960,18 @@ function renderProjection(){
         <div class="target-card-lbl">🛒 Order This Week</div>
         <div class="target-card-total">${fc(wP)}</div>
         <div class="target-breakdown">
-          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projPurchPW)}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projPurchPW)}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projPurchPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(expCatP['Beer'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(expCatP['Wine'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(expCatP['Liquor'])}</span></div>
         </div>
       </div>
       <div class="target-card target-card-sales">
         <div class="target-card-lbl">💰 Sell This Week</div>
         <div class="target-card-total">${fc(wS)}</div>
         <div class="target-breakdown">
-          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(cats['Beer'].projSalesPW)}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(cats['Wine'].projSalesPW)}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(cats['Liquor'].projSalesPW)}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(expCatS['Beer'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(expCatS['Wine'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(expCatS['Liquor'])}</span></div>
         </div>
       </div>
     </div>
@@ -961,9 +1008,10 @@ function renderProjection(){
         driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(absDrift)} below opening</strong>. Inventory is drawing down faster than expected — sales are significantly outpacing purchasing at cost. ${weeksLeft>0?'The weekly order targets above reflect current sales pace. Follow those and verify stock levels to make sure nothing is running short.':'Verify stock levels before the close count.'}`;
       }
     }
+    const catDriftRow=SCATS.map(cat=>{const d=cats[cat].drift;const col=Math.abs(d)<50?'var(--muted)':d>0?'var(--warn)':'var(--ok)';return`${cat}: <strong style="color:${col}">${d>=0?'+':''}${fcs(d)}</strong>`;}).join(' &nbsp;·&nbsp; ');
     driftNarr=`<div class="alert ${driftClass}" style="margin-top:8px;margin-bottom:4px">
       <span class="alert-icon">${driftIcon}</span>
-      <span><strong>Inventory:</strong> ${driftMsg}</span>
+      <span><strong>Inventory:</strong> ${driftMsg}<div style="margin-top:6px;font-size:var(--xs);color:var(--muted)">${catDriftRow}</div></span>
     </div>`;
   }
 
@@ -1256,11 +1304,88 @@ function renderPeriodSummary(){
   </div>`;
 }
 
+// ─── YEAR-OVER-YEAR COMPARISON ────────────────────────────────
+function renderYoY(){
+  const el=$('yoy-section');
+  if(!el)return;
+  const we=weeksEntered();
+  const periodNum=getPeriodNum();
+  const lyData=periodNum&&HISTORY_LY[periodNum]?HISTORY_LY[periodNum]:null;
+  if(!lyData||we===0){el.innerHTML='';return;}
+
+  // Current pace: total sales to date ÷ weeks entered (inc. partial current week)
+  const curS={};let curTot=0;
+  SCATS.forEach(cat=>{const s=periodSales(we,cat);curS[cat]=s/we;curTot+=s;});
+  const curTotAvg=curTot/we;
+
+  // LY weekly averages (full period ÷ 4 weeks)
+  const lyAvg={};
+  SCATS.forEach(cat=>{lyAvg[cat]=lyData[cat]/4;});
+  const lyTotAvg=lyData.Total/4;
+
+  const weLabel=we===1?'1 wk avg':`${we}-wk avg`;
+  const arrowUp='<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 1l4 8H1z"/></svg>';
+  const arrowDn='<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 9L1 1h8z"/></svg>';
+
+  const makeRow=(label,cur,ly,bold)=>{
+    const v=cur-ly;
+    const pct=ly>0?(v/ly)*100:0;
+    const up=v>=0;
+    const col=up?'var(--ok)':'var(--err)';
+    const arrow=up?arrowUp:arrowDn;
+    const sign=up?'+':'';
+    const fw=bold?'font-weight:700;':'';
+    const fs=bold?`font-size:var(--sm);`:'';
+    const pt=bold?'padding-top:8px;border-top:1px solid var(--divider);':''
+    return`<tr>
+      <td style="${fw}${fs}${pt}padding:4px 0">${label}</td>
+      <td style="${fw}${fs}${pt}text-align:right;padding:4px 4px 4px 12px">${fc(cur)}</td>
+      <td style="${pt}text-align:right;padding:4px 4px 4px 12px;color:var(--muted)">${fc(ly)}</td>
+      <td style="${fw}${fs}${pt}text-align:right;padding:4px 4px 4px 12px;color:${col}">
+        <span style="display:inline-flex;align-items:center;gap:3px">${arrow}${sign}${fc(Math.abs(v))}</span>
+      </td>
+      <td style="${fw}${fs}${pt}text-align:right;padding:4px 0 4px 12px;color:${col}">${sign}${Math.abs(pct).toFixed(1)}%</td>
+    </tr>`;
+  };
+
+  const rows=SCATS.map(cat=>makeRow(cat,curS[cat],lyAvg[cat],false));
+  const totRow=makeRow('Total',curTotAvg,lyTotAvg,true);
+
+  const totV=curTotAvg-lyTotAvg;
+  const totPct=lyTotAvg>0?(totV/lyTotAvg)*100:0;
+  const summaryCol=totV>=0?'var(--ok)':'var(--err)';
+  const pctRnd=Math.round(Math.abs(totPct));
+  const summaryTxt=totV>=0
+    ?`Running <strong style="color:${summaryCol}">+${pctRnd}% ahead of last year</strong> — great momentum, keep pushing.`
+    :`Running <strong style="color:${summaryCol}">${pctRnd}% below last year</strong> — focus on driving covers and check on event pipeline.`;
+
+  el.innerHTML=`<div class="card" style="margin-bottom:0">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:4px">
+      <span style="font-size:var(--sm);font-weight:700">vs. Last Year — Period ${periodNum}</span>
+      <span style="font-size:var(--xs);color:var(--muted)">Weekly avg · ${weLabel} this period vs. P${periodNum} 2025</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:var(--xs)">
+      <thead>
+        <tr style="color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--divider)">
+          <th style="text-align:left;padding:0 0 6px;font-weight:600">Category</th>
+          <th style="text-align:right;padding:0 4px 6px 12px;font-weight:600">This Year</th>
+          <th style="text-align:right;padding:0 4px 6px 12px;font-weight:600">Last Year</th>
+          <th style="text-align:right;padding:0 4px 6px 12px;font-weight:600">$ Diff</th>
+          <th style="text-align:right;padding:0 0 6px 12px;font-weight:600">% Diff</th>
+        </tr>
+      </thead>
+      <tbody>${rows.join('')}${totRow}</tbody>
+    </table>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--divider);font-size:var(--xs);color:var(--muted)">${summaryTxt}</div>
+  </div>`;
+}
+
 // ─── MAIN RENDER ──────────────────────────────────────────────
 function render(){
   $('wk-dates').textContent=wkRange(st.week);
   $('week-panel').innerHTML=renderWeek(st.week);
   renderKPIs();
+  renderYoY();
   renderProjection();
   renderPeriodSummary();
 }
@@ -1430,6 +1555,7 @@ function loadFromStorage() {
           });
         }
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
+        if (data.weeks.plan && data.weeks.plan[w]) st.plan[w] = data.weeks.plan[w];
         if (data.weeks.events && data.weeks.events[w]) st.events[w] = data.weeks.events[w];
       }
     }
