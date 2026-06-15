@@ -203,6 +203,10 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
     </div>
   </div>
   <div class="topbar-right">
+    <button class="btn btn-ghost" onclick="copyWeekEmail(this)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy Email
+    </button>
     <button class="btn btn-ghost" onclick="exportCSV()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Export CSV
@@ -1529,6 +1533,110 @@ function setVal(type,week,cat,day,val){
   if(type==='p')st.p[week][cat][day]=v;
   else st.s[week][cat][day]=v;
   render();
+}
+
+// ─── WEEKLY EMAIL SUMMARY ─────────────────────────────────────
+function generateWeekEmail(){
+  const we=weeksEntered();
+  const pName=$('pName').value||'This Period';
+  const periodNum=getPeriodNum();
+  const lyData=periodNum&&HISTORY_LY[periodNum]?HISTORY_LY[periodNum]:null;
+  const tgt=gv('costTarget');
+  const nextWeek=we+1;
+  const expWkS=st.weekSales[nextWeek]>0?st.weekSales[nextWeek]:(gv('expWeeklySales')||8000);
+
+  // If no data at all
+  if(we===0){
+    return `${pName} — Period Tracker\n\nNo data entered yet for this period.`;
+  }
+
+  // ── Last complete week recap ───────────────────────────────────
+  const recapWeek=isWeekComplete(we)?we:Math.max(1,we-1);
+  const lines=[];
+
+  lines.push(`Subject: ${pName} — Week ${recapWeek} Recap & Week ${nextWeek<=4?nextWeek:'Close'} Game Plan`);
+  lines.push('');
+  lines.push('Hey Vanessa,');
+  lines.push('');
+
+  // Week recap header
+  const totSales=SCATS.reduce((s,c)=>s+wSales(recapWeek,c),0);
+  const totPurch=PCATS.reduce((s,c)=>s+wPurch(recapWeek,c),0);
+  const blendCost=totSales>0?(totPurch/totSales)*100:null;
+
+  lines.push(`WEEK ${recapWeek} RECAP`);
+  lines.push(`Total Sales: ${fc(totSales)}  |  Orders: ${fc(totPurch)}  |  Blended Cost: ${blendCost!==null?fd(blendCost,1)+'%':'—'}${blendCost!==null&&blendCost<=tgt?' ✅':blendCost!==null&&blendCost<=tgt*1.08?' ⚠️':blendCost!==null?' 🔴':''}`);
+  lines.push('');
+
+  SCATS.forEach(cat=>{
+    const s=wSales(recapWeek,cat);
+    const p=wPurch(recapWeek,cat)+(cat==='Liquor'?wPurch(recapWeek,'Consumables'):0);
+    const pct=s>0?(p/s)*100:null;
+    const catT=catTgt(cat);
+    const flag=pct===null?'':pct<=catT?' ✅':pct<=catT*1.08?' ⚠️':' 🔴';
+    lines.push(`${cat.padEnd(10)} ${fc(s).padStart(9)} sales  /  ${fc(p).padStart(9)} ordered  /  ${pct!==null?fd(pct,1)+'%':'—'} cost (target ${fd(catT,1)}%)${flag}`);
+  });
+  lines.push('');
+
+  // Inventory drift summary
+  const totBeg=totalBegInv();
+  const totPurchAll=PCATS.reduce((s,c)=>s+periodPurch(we,c),0);
+  const totSalesAll=SCATS.reduce((s,c)=>s+periodSales(we,c),0);
+  const driftAmt=totPurchAll-(totSalesAll*(tgt/100));
+  const estEnd=totBeg+driftAmt;
+  const driftDir=Math.abs(driftAmt)<200?'right in line with opening — well balanced.':driftAmt>0?`tracking ${fc(driftAmt)} above opening — inventory building slightly.`:`tracking ${fc(Math.abs(driftAmt))} below opening — drawing down, healthy sign.`;
+  lines.push(`Inventory est. closing at ${fc(estEnd)} — ${driftDir}`);
+  lines.push('');
+
+  // YoY comparison if available
+  if(lyData&&we>0){
+    const curWkAvg=totSalesAll/we;
+    const lyWkAvg=lyData.Total/4;
+    const lyVar=((curWkAvg-lyWkAvg)/lyWkAvg)*100;
+    const lyDir=lyVar>=0?`+${Math.round(Math.abs(lyVar))}% ahead of`:`${Math.round(Math.abs(lyVar))}% below`;
+    lines.push(`vs. Last Year: Running ${lyDir} ${pName} 2025 pace (${fc(curWkAvg)}/wk this year vs ${fc(lyWkAvg)}/wk last year).`);
+    lines.push('');
+  }
+
+  // ── Next week game plan ───────────────────────────────────────
+  if(nextWeek<=4){
+    const plan=genWeekPlan(nextWeek);
+    const wkOrderTot=expWkS*(tgt/100);
+    lines.push('---');
+    lines.push('');
+    lines.push(`WEEK ${nextWeek} GAME PLAN`);
+    lines.push(`Sales target: ${fc(expWkS)}   |   Order target: ${fc(wkOrderTot)}`);
+    lines.push('');
+    [['Beer','🍺'],['Wine','🍷'],['Liquor','🥃'],['Consumables','⚗️']].forEach(([cat,icon])=>{
+      // Strip HTML tags from plan text
+      const txt=(plan[cat]||'').replace(/<[^>]+>/g,'');
+      lines.push(`${icon} ${cat}`);
+      lines.push(`   ${txt}`);
+      lines.push('');
+    });
+    lines.push('Follow the targets above and let me know if anything looks off.');
+  } else {
+    lines.push('Period is wrapping up — make sure to enter your ending inventory from MarginEdge to lock the final pour cost.');
+  }
+
+  lines.push('');
+  lines.push('— Nick');
+
+  return lines.join('\n');
+}
+
+function copyWeekEmail(btn){
+  const text=generateWeekEmail();
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig=btn.innerHTML;
+    btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    btn.style.color='var(--ok)';
+    btn.style.borderColor='var(--ok)';
+    setTimeout(()=>{btn.innerHTML=orig;btn.style.color='';btn.style.borderColor='';},2500);
+  }).catch(()=>{
+    // Fallback: show text in a prompt so user can manually copy
+    prompt('Copy the email below (Cmd+A, Cmd+C):', text);
+  });
 }
 
 // ─── EXPORT ───────────────────────────────────────────────────
