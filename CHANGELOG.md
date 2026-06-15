@@ -4,6 +4,11 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.11] — 2026-06-15
+### Changed
+- **Game Plan card** — expanded from a single textarea to four per-category rows (Beer, Wine, Liquor, Consumables), each with a bold underline input. Category labels are bold teal with emoji icons. Subtitle reads "Read before placing first order." Old single-string plans migrate automatically to the Consumables row.
+- **Weekly target cards** — added "Expected sales" override input per week (next to the WEEK X TARGET label). Defaults to the Period Setup expected sales ($8,000). When overridden, the ORDER THIS WEEK total and per-category breakdown recalculate instantly using the new estimate × 21.5% blended target. Overridden weeks show the input highlighted in teal with an "adjusted" tag.
+
 ## [v5.10] — 2026-06-15
 ### Added
 - **Game Plan card** — a teal-bordered callout that appears at the top of each week's tracker panel, above the data table. Write the purchasing strategy for the week (e.g. "Ease up on beer, push liquor, wine on target — shoot for $8k"). Saves automatically when focus leaves the field. Persists across sessions in localStorage. Separate from the bottom "Week Notes" field (which is for recording what happened).

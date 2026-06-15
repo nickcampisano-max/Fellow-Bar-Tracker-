@@ -123,9 +123,10 @@ table{border-collapse:collapse;width:100%}
 
 /* GAME PLAN */
 .plan-card{background:var(--primary-hl);border:1.5px solid var(--primary);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:14px}
-.plan-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:5px}
-.plan-area{width:100%;background:transparent;border:none;font:inherit;font-size:var(--xs);color:var(--text);resize:none;min-height:38px;line-height:1.55;outline:none}
-.plan-area::placeholder{color:var(--primary);opacity:.45;font-style:italic}
+.plan-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.plan-input{flex:1;background:transparent;border:none;border-bottom:1px solid color-mix(in srgb,var(--primary) 30%,transparent);font:inherit;font-size:var(--xs);font-weight:600;color:var(--text);outline:none;padding:2px 0;width:100%;min-width:0;transition:border-color var(--tr)}
+.plan-input:focus{border-bottom-color:var(--primary)}
+.plan-input::placeholder{color:var(--primary);opacity:.4;font-weight:400;font-style:italic}
 
 /* PROJECTION */
 .proj-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
@@ -372,9 +373,9 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{}, plan:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
+let st = { week:1, p:{}, s:{}, notes:{}, plan:{}, weekSales:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
 for(let w=1;w<=4;w++){
-  st.p[w]={};st.s[w]={};st.notes[w]='';st.plan[w]='';st.events[w]=0;
+  st.p[w]={};st.s[w]={};st.notes[w]='';st.plan[w]={Beer:'',Wine:'',Liquor:'',Consumables:''};st.weekSales[w]=0;st.events[w]=0;
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
   SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
 }
@@ -605,11 +606,19 @@ function renderWeek(w){
     <div class="plan-card">
       <div class="plan-label">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 4.079 4.079-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
-        Game Plan — Week ${w}
+        Manager Game Plan — Week ${w}
+        <span style="font-size:9px;font-weight:500;opacity:.6;margin-left:4px;text-transform:none;letter-spacing:0">Read before placing first order</span>
       </div>
-      <textarea class="plan-area" rows="2"
-        placeholder="e.g. Ease up on beer — ended last week above opening. Liquor on pace, keep same order. Wine looking great — purchase to goal. Shoot for $8k in sales."
-        onchange="st.plan[${w}]=this.value;saveToStorage()">${st.plan[w]||''}</textarea>
+      <div style="display:grid;gap:7px">
+        ${[['Beer','🍺'],['Wine','🍷'],['Liquor','🥃'],['Consumables','⚗️']].map(([cat,icon])=>`
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <span style="font-size:var(--xs);font-weight:700;color:var(--primary);min-width:95px;padding-top:2px">${icon} ${cat}</span>
+          <input class="plan-input" type="text"
+            placeholder="Notes for ${cat} this week..."
+            value="${(st.plan[w][cat]||'').replace(/"/g,'&quot;')}"
+            onchange="st.plan[${w}]['${cat}']=this.value;saveToStorage()">
+        </div>`).join('')}
+      </div>
     </div>
     <div class="tbl-wrap"><table class="tk-tbl">
       <thead><tr>
@@ -952,30 +961,59 @@ function renderProjection(){
   }
 
   // Remaining weeks — separate labeled block per week
-  const remainingCardsHtml=remWeeks.map((w,i)=>`
+  // Per-week sales estimate: uses weekSales override if set, else falls back to expWeeklyS
+  const remainingCardsHtml=remWeeks.map((w,i)=>{
+    const wkSalesEst=st.weekSales[w]>0?st.weekSales[w]:expWeeklyS;
+    const wkOrderTot=wkSalesEst*(tgt/100);
+    // Distribute by category using velocity sales mix
+    const wkCatS={};const wkCatP={};
+    const wkCatWtTot=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*(velTotS>0?wkSalesEst*(vel[c].avgS/velTotS):wkSalesEst*salesMix[c]),0);
+    SCATS.forEach(cat=>{
+      wkCatS[cat]=velTotS>0?wkSalesEst*(vel[cat].avgS/velTotS):wkSalesEst*salesMix[cat];
+      const catWt=wkCatWtTot>0?(catTgt(cat)/100)*wkCatS[cat]/wkCatWtTot:0;
+      wkCatP[cat]=wkOrderTot*catWt;
+    });
+    const isOverride=st.weekSales[w]>0;
+    return`
   <div style="${i>0?'margin-top:14px':''}">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">WEEK ${w} TARGET</div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">WEEK ${w} TARGET</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:9px;color:var(--faint)">Expected sales:</span>
+        <div style="position:relative;display:inline-flex;align-items:center">
+          <span style="position:absolute;left:5px;font-size:var(--xs);color:var(--muted);pointer-events:none">$</span>
+          <input type="text" inputmode="decimal"
+            style="width:80px;padding:2px 4px 2px 14px;font-size:var(--xs);font-weight:700;color:${isOverride?'var(--primary)':'var(--muted)'};background:var(--off);border:1px solid ${isOverride?'var(--primary)':'var(--border)'};border-radius:var(--r-sm);outline:none;font-family:inherit"
+            value="${isOverride?fd(st.weekSales[w],0):''}"
+            placeholder="${fd(expWeeklyS,0)}"
+            onchange="st.weekSales[${w}]=parseNum(this.value)||0;saveToStorage();renderProjection()"
+            onfocus="this.select()">
+        </div>
+        ${isOverride?`<span style="font-size:9px;color:var(--primary);font-style:italic">adjusted</span>`:''}
+      </div>
+    </div>
     <div class="target-cards">
       <div class="target-card target-card-order">
         <div class="target-card-lbl">🛒 Order This Week</div>
-        <div class="target-card-total">${fc(wP)}</div>
+        <div class="target-card-total">${fc(wkOrderTot)}</div>
         <div class="target-breakdown">
-          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(expCatP['Beer'])}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(expCatP['Wine'])}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(expCatP['Liquor'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wkCatP['Beer'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wkCatP['Wine'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wkCatP['Liquor'])}</span></div>
         </div>
       </div>
       <div class="target-card target-card-sales">
         <div class="target-card-lbl">💰 Sell This Week</div>
-        <div class="target-card-total">${fc(wS)}</div>
+        <div class="target-card-total">${fc(wkSalesEst)}</div>
         <div class="target-breakdown">
-          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(expCatS['Beer'])}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(expCatS['Wine'])}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(expCatS['Liquor'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wkCatS['Beer'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wkCatS['Wine'])}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wkCatS['Liquor'])}</span></div>
         </div>
       </div>
     </div>
-  </div>`).join('');
+  </div>`;
+  }).join('');
 
   const managerCards=(inProgressCard||remWeeks.length>0)?`
   ${inProgressCard}
@@ -1555,7 +1593,13 @@ function loadFromStorage() {
           });
         }
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
-        if (data.weeks.plan && data.weeks.plan[w]) st.plan[w] = data.weeks.plan[w];
+        if (data.weeks.plan && data.weeks.plan[w]) {
+          const p = data.weeks.plan[w];
+          // Support old single-string format and new per-category object format
+          if (typeof p === 'string') st.plan[w] = {Beer:'',Wine:'',Liquor:'',Consumables:p};
+          else st.plan[w] = Object.assign({Beer:'',Wine:'',Liquor:'',Consumables:''}, p);
+        }
+        if (data.weeks.weekSales && data.weeks.weekSales[w]) st.weekSales[w] = data.weeks.weekSales[w];
         if (data.weeks.events && data.weeks.events[w]) st.events[w] = data.weeks.events[w];
       }
     }
