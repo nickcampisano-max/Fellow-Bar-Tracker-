@@ -373,9 +373,9 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{}, plan:{}, weekSales:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
+let st = { week:1, p:{}, s:{}, notes:{}, weekSales:{}, events:{}, scenarioSales:0, customPct:0, customSales:0 };
 for(let w=1;w<=4;w++){
-  st.p[w]={};st.s[w]={};st.notes[w]='';st.plan[w]={Beer:'',Wine:'',Liquor:'',Consumables:''};st.weekSales[w]=0;st.events[w]=0;
+  st.p[w]={};st.s[w]={};st.notes[w]='';st.weekSales[w]=0;st.events[w]=0;
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
   SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
 }
@@ -480,6 +480,75 @@ function catCalc(cat, thru){
     periodCostPct, adjPourCost, adjPourCostIsEst: isEstimated,
     drift
   };
+}
+
+// ─── AUTO GAME PLAN GENERATOR ─────────────────────────────────
+// Produces per-category purchasing guidance for week w based on
+// actual period-to-date data through week w-1.
+function genWeekPlan(w){
+  const we=weeksEntered();
+  const dataThru=Math.min(w-1,we);
+  const expWkS=st.weekSales[w]>0?st.weekSales[w]:(gv('expWeeklySales')||8000);
+  const defaultMix={Beer:0.07,Wine:0.29,Liquor:0.64};
+
+  // Sales mix from actual data through dataThru
+  let mix={...defaultMix};
+  if(dataThru>0){
+    const totS=SCATS.reduce((s,c)=>s+periodSales(dataThru,c),0);
+    if(totS>0)SCATS.forEach(c=>{mix[c]=periodSales(dataThru,c)/totS;});
+  }
+
+  const result={};
+
+  // ── Beer / Wine / Liquor ──────────────────────────────────────
+  SCATS.forEach(cat=>{
+    const catT=catTgt(cat);
+    const wkOrd=(expWkS*mix[cat])*(catT/100);
+
+    if(dataThru===0){
+      result[cat]=`Opening week — no prior data to reference. Purchase to target: ${fc(wkOrd)}.`;
+      return;
+    }
+
+    const r=catCalc(cat,dataThru);
+    const drift=r.endingUsed-r.beg;
+    const pct=r.periodCostPct;
+    const absDrift=Math.abs(drift);
+
+    // Cost line
+    let costLine='';
+    if(pct!==null){
+      if(pct>catT*1.1) costLine=`Cost running hot at ${fd(pct,1)}% vs ${fd(catT,1)}% target — be disciplined with orders this week.`;
+      else if(pct>catT) costLine=`Cost slightly above target at ${fd(pct,1)}% (goal: ${fd(catT,1)}%) — stay tight.`;
+      else costLine=`Cost clean at ${fd(pct,1)}% vs ${fd(catT,1)}% target — on track.`;
+    }
+
+    // Inventory line
+    let invLine='';
+    if(absDrift<75) invLine='Inventory is balanced.';
+    else if(drift>300) invLine=`Inventory building fast — up ${fc(drift)} above opening. Ease up on orders this week.`;
+    else if(drift>75) invLine=`Inventory slightly elevated (+${fc(drift)}) — ease up a touch.`;
+    else if(drift<-300) invLine=`Inventory drawing down fast — ${fc(absDrift)} below opening. Bump your order this week.`;
+    else invLine=`Inventory drawing down slightly (-${fc(absDrift)}) — healthy, just keep an eye on stock levels.`;
+
+    result[cat]=`${costLine} ${invLine} Order target this week: <strong>${fc(wkOrd)}</strong>.`.trim();
+  });
+
+  // ── Consumables ───────────────────────────────────────────────
+  const consTgt=catTgt('Consumables');
+  if(dataThru===0){
+    result.Consumables=`Opening week — purchase to rhythm. Target: ${fp(consTgt)} of Liquor sales.`;
+  } else {
+    const consP=periodPurch(dataThru,'Consumables');
+    const liqS=periodSales(dataThru,'Liquor');
+    const pct=liqS>0?(consP/liqS)*100:null;
+    if(pct===null) result.Consumables='No Liquor sales data yet — purchase to usual rhythm.';
+    else if(pct>consTgt*1.2) result.Consumables=`Running hot at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target — trim this week and check usage.`;
+    else if(pct>consTgt) result.Consumables=`Slightly above target (${fd(pct,1)}% vs ${fd(consTgt,1)}%) — stay lean this week.`;
+    else result.Consumables=`On track at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target — maintain current pace.`;
+  }
+
+  return result;
 }
 
 // ─── WEEK RENDERER ────────────────────────────────────────────
@@ -603,23 +672,22 @@ function renderWeek(w){
       <div><div class="sec-title">Week ${w} — Daily Tracker</div>
         <div class="sec-sub">${wkRange(w)} &nbsp;·&nbsp; Enter purchases and sales as they occur</div></div>
     </div>
-    <div class="plan-card">
-      <div class="plan-label">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 4.079 4.079-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
-        Manager Game Plan — Week ${w}
-        <span style="font-size:9px;font-weight:500;opacity:.6;margin-left:4px;text-transform:none;letter-spacing:0">Read before placing first order</span>
-      </div>
-      <div style="display:grid;gap:7px">
-        ${[['Beer','🍺'],['Wine','🍷'],['Liquor','🥃'],['Consumables','⚗️']].map(([cat,icon])=>`
-        <div style="display:flex;align-items:flex-start;gap:8px">
-          <span style="font-size:var(--xs);font-weight:700;color:var(--primary);min-width:95px;padding-top:2px">${icon} ${cat}</span>
-          <input class="plan-input" type="text"
-            placeholder="Notes for ${cat} this week..."
-            value="${(st.plan[w][cat]||'').replace(/"/g,'&quot;')}"
-            onchange="st.plan[${w}]['${cat}']=this.value;saveToStorage()">
-        </div>`).join('')}
-      </div>
-    </div>
+    ${(()=>{
+      const plan=genWeekPlan(w);
+      const rows=[['Beer','🍺'],['Wine','🍷'],['Liquor','🥃'],['Consumables','⚗️']].map(([cat,icon])=>`
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:var(--xs);font-weight:700;color:var(--primary);min-width:105px;white-space:nowrap;padding-top:1px">${icon} ${cat}</span>
+          <span style="font-size:var(--xs);line-height:1.6;color:var(--text)">${plan[cat]||''}</span>
+        </div>`).join('');
+      return`<div class="plan-card">
+        <div class="plan-label">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 4.079 4.079-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+          Manager Game Plan — Week ${w}
+          <span style="font-size:9px;font-weight:500;opacity:.6;margin-left:4px;text-transform:none;letter-spacing:0">Read before placing your first order</span>
+        </div>
+        <div style="display:grid;gap:10px">${rows}</div>
+      </div>`;
+    })()}
     <div class="tbl-wrap"><table class="tk-tbl">
       <thead><tr>
         <th style="text-align:left;min-width:135px"></th>${dayHdrs}
@@ -1593,12 +1661,6 @@ function loadFromStorage() {
           });
         }
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
-        if (data.weeks.plan && data.weeks.plan[w]) {
-          const p = data.weeks.plan[w];
-          // Support old single-string format and new per-category object format
-          if (typeof p === 'string') st.plan[w] = {Beer:'',Wine:'',Liquor:'',Consumables:p};
-          else st.plan[w] = Object.assign({Beer:'',Wine:'',Liquor:'',Consumables:''}, p);
-        }
         if (data.weeks.weekSales && data.weeks.weekSales[w]) st.weekSales[w] = data.weeks.weekSales[w];
         if (data.weeks.events && data.weeks.events[w]) st.events[w] = data.weeks.events[w];
       }
