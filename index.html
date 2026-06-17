@@ -377,9 +377,9 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PCATS = ['Beer','Wine','Liquor','Consumables'];
 const SCATS = ['Beer','Wine','Liquor'];
 
-let st = { week:1, p:{}, s:{}, notes:{}, weekSales:{}, events:{} };
+let st = { week:1, p:{}, s:{}, notes:{}, weekSales:{}, weekCostPct:{}, events:{} };
 for(let w=1;w<=4;w++){
-  st.p[w]={};st.s[w]={};st.notes[w]='';st.weekSales[w]=0;st.events[w]=0;
+  st.p[w]={};st.s[w]={};st.notes[w]='';st.weekSales[w]=0;st.weekCostPct[w]=0;st.events[w]=0;
   PCATS.forEach(c=>{st.p[w][c]=Array(7).fill(0);});
   SCATS.forEach(c=>{st.s[w][c]=Array(7).fill(0);});
 }
@@ -1162,7 +1162,8 @@ function renderProjection(){
   // Per-week sales estimate: uses weekSales override if set, else falls back to expWeeklyS
   const remainingCardsHtml=remWeeks.map((w,i)=>{
     const wkSalesEst=st.weekSales[w]>0?st.weekSales[w]:expWeeklyS;
-    const wkOrderTot=wkSalesEst*(tgt/100);
+    const wkPct=st.weekCostPct[w]>0?st.weekCostPct[w]:tgt;
+    const wkOrderTot=wkSalesEst*(wkPct/100);
     // Distribute by category using velocity sales mix
     const wkCatS={};const wkCatP={};
     const wkCatWtTot=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*(velTotS>0?wkSalesEst*(vel[c].avgS/velTotS):wkSalesEst*salesMix[c]),0);
@@ -1172,23 +1173,36 @@ function renderProjection(){
       wkCatP[cat]=wkOrderTot*catWt;
     });
     const isOverride=st.weekSales[w]>0;
+    const isPctOverride=st.weekCostPct[w]>0;
     return`
   <div style="${i>0?'margin-top:14px':''}">
-    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
       <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">WEEK ${w} TARGET</span>
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:9px;color:var(--faint)">Expected sales:</span>
+        <span style="font-size:9px;color:var(--faint)">Sales est:</span>
         <div style="position:relative;display:inline-flex;align-items:center">
           <span style="position:absolute;left:5px;font-size:var(--xs);color:var(--muted);pointer-events:none">$</span>
           <input type="text" inputmode="decimal"
-            style="width:80px;padding:2px 4px 2px 14px;font-size:var(--xs);font-weight:700;color:${isOverride?'var(--primary)':'var(--muted)'};background:var(--off);border:1px solid ${isOverride?'var(--primary)':'var(--border)'};border-radius:var(--r-sm);outline:none;font-family:inherit"
+            style="width:76px;padding:2px 4px 2px 14px;font-size:var(--xs);font-weight:700;color:${isOverride?'var(--primary)':'var(--muted)'};background:var(--off);border:1px solid ${isOverride?'var(--primary)':'var(--border)'};border-radius:var(--r-sm);outline:none;font-family:inherit"
             value="${isOverride?fd(st.weekSales[w],0):''}"
             placeholder="${fd(expWeeklyS,0)}"
             onchange="st.weekSales[${w}]=parseNum(this.value)||0;saveToStorage();renderProjection()"
             onfocus="this.select()">
         </div>
-        ${isOverride?`<span style="font-size:9px;color:var(--primary);font-style:italic">adjusted</span>`:''}
       </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:9px;color:var(--faint)">Cost target:</span>
+        <div style="position:relative;display:inline-flex;align-items:center">
+          <input type="text" inputmode="decimal"
+            style="width:52px;padding:2px 18px 2px 6px;font-size:var(--xs);font-weight:700;color:${isPctOverride?'var(--primary)':'var(--muted)'};background:var(--off);border:1px solid ${isPctOverride?'var(--primary)':'var(--border)'};border-radius:var(--r-sm);outline:none;font-family:inherit;text-align:right"
+            value="${isPctOverride?st.weekCostPct[w]:''}"
+            placeholder="${tgt}"
+            onchange="st.weekCostPct[${w}]=parseFloat(this.value)||0;saveToStorage();renderProjection()"
+            onfocus="this.select()">
+          <span style="position:absolute;right:5px;font-size:var(--xs);color:var(--muted);pointer-events:none">%</span>
+        </div>
+      </div>
+      ${(isOverride||isPctOverride)?`<span style="font-size:9px;color:var(--primary);font-style:italic">adjusted</span>`:''}
     </div>
     <div class="target-cards">
       <div class="target-card target-card-order">
@@ -1218,39 +1232,6 @@ function renderProjection(){
   ${remainingCardsHtml}
   <div style="margin-top:12px;margin-bottom:4px">${statusBadge}</div>`
   :`<div style="margin-bottom:8px">${statusBadge}<div class="alert a-ok" style="margin-top:10px"><span class="alert-icon">🏁</span><span><strong>Period complete.</strong> Enter ending inventory in Period Setup to lock your true adjusted pour cost.</span></div></div>`;
-
-  // ── Inventory drift narrative ─────────────────────────────────
-  let driftNarr='';
-  if(we>0&&!hasActualEnding()){
-    let totActPAll=0;
-    for(let ww=1;ww<=we;ww++) totActPAll+=wTotP(ww);
-    const driftAmt=totActPAll-(totalActSales*(tgt/100));
-    const totBegN=totalBegInv();
-    const estEndN=totBegN+driftAmt;
-    const absDrift=Math.abs(driftAmt);
-    let driftIcon,driftClass,driftMsg;
-    if(absDrift<200){
-      driftIcon='✅';driftClass='a-ok';
-      driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — right in line with where the period started. Purchasing and sales are well-balanced. Follow the weekly order targets above to close clean.`;
-    } else if(driftAmt>0){
-      driftIcon='📦';driftClass='a-warn';
-      driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(driftAmt)} above opening</strong>. Purchasing is running ahead of what sales are burning through at cost. The weekly order targets above already account for this — follow those numbers and inventory will work its way back in line by close.`;
-    } else {
-      if(absDrift<500){
-        driftIcon='📉';driftClass='a-ok';
-        driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(absDrift)} below opening</strong>. Sales are outpacing purchasing at cost — a healthy sign. Keep an eye on stock levels and follow the weekly order targets above to finish strong.`;
-      } else {
-        driftIcon='⚠️';driftClass='a-warn';
-        driftMsg=`Est. closing at <strong>${fc(estEndN)}</strong> — tracking <strong>${fc(absDrift)} below opening</strong>. Inventory is drawing down faster than expected — sales are significantly outpacing purchasing at cost. ${weeksLeft>0?'The weekly order targets above reflect current sales pace. Follow those and verify stock levels to make sure nothing is running short.':'Verify stock levels before the close count.'}`;
-      }
-    }
-    const catDriftRow=SCATS.map(cat=>{const d=cats[cat].drift;const col=Math.abs(d)<50?'var(--muted)':d>0?'var(--warn)':'var(--ok)';return`${cat}: <strong style="color:${col}">${d>=0?'+':''}${fcs(d)}</strong>`;}).join(' &nbsp;·&nbsp; ');
-    driftNarr=`<div class="alert ${driftClass}" style="margin-top:8px;margin-bottom:4px">
-      <span class="alert-icon">${driftIcon}</span>
-      <span><strong>Inventory:</strong> ${driftMsg}<div style="margin-top:6px;font-size:var(--xs);color:var(--muted)">${catDriftRow}</div></span>
-    </div>`;
-  }
-
 
   // ── Operator details (collapsible) ────────────────────────────
   const lyBanner=lyData?`
@@ -1336,7 +1317,6 @@ function renderProjection(){
       </div>
     </div>
     ${managerCards}
-    ${driftNarr}
     <details class="op-details">
       <summary>OPERATOR DETAILS</summary>
       ${lyBanner}
@@ -1773,6 +1753,7 @@ function loadFromStorage() {
         }
         if (data.weeks.notes && data.weeks.notes[w]) st.notes[w] = data.weeks.notes[w];
         if (data.weeks.weekSales && data.weeks.weekSales[w]) st.weekSales[w] = data.weeks.weekSales[w];
+        if (data.weeks.weekCostPct && data.weeks.weekCostPct[w]) st.weekCostPct[w] = data.weeks.weekCostPct[w];
         if (data.weeks.events && data.weeks.events[w]) st.events[w] = data.weeks.events[w];
       }
     }

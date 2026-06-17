@@ -4,6 +4,13 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.15] — 2026-06-17
+### Added
+- **Per-week cost target % override** on weekly target cards — a "Cost target: __%" input sits next to the existing sales estimate override. When filled in, the Order This Week total recalculates using that %, overriding the global blended target (21.5%). Useful when a specific week calls for a tighter or looser purchasing stance. Highlights teal when overridden. Persists in localStorage.
+
+### Removed
+- **Inventory drift narrative** (orange alert box) — removed from the Forecast section. Per-category drift is already visible in the KPI tile detail panel and in the live Week Status card in each week tab. The narrative was redundant.
+
 ## [v5.14] — 2026-06-17
 ### Removed
 - **Scenario Planner** — the orange "Scenario Planner" table has been removed from the Forecast section. Its functionality is fully covered by: (1) per-week sales override on the weekly target cards, and (2) the real-time Week Live Status card. Removed `scenarioSales`, `customPct`, `customSales` state, `setScenarioSales()`, `setCustomPct()`, `setCustomSales()`, `setCustomPurch()` functions, and their loadFromStorage restoration.
