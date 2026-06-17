@@ -4,6 +4,16 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.13] — 2026-06-15
+### Added
+- **Week Live Status card** — appears between the Game Plan card and the data table, but only once data has been entered for that week. Updates in real time as purchases and sales are typed in. Shows per-category:
+  - Orders placed vs week target (with how much is still needed, or if over)
+  - Sales pace projected to end of week vs target
+  - Cost % for the week so far vs category target (with ✅ ⚠️ 🔴 flag)
+  - Consumables tracked vs Liquor sales as denominator
+  - Summary footer: total sold, total ordered vs target, blended cost % with flag
+  - Day counter ("Day X of 7 · Y days remaining")
+
 ## [v5.12] — 2026-06-15
 ### Added
 - **Copy Email button** in the topbar. Generates a plain-text weekly recap + game plan email and copies it to clipboard in one click. Button briefly shows "Copied!" confirmation. Content includes: last complete week sales/orders/cost% per category with pass/fail flags, inventory drift summary, YoY comparison (if historical data available), next week's sales and order targets, and auto-generated per-category game plan. Falls back to a copy-prompt dialog if clipboard access is unavailable.

@@ -555,6 +555,131 @@ function genWeekPlan(w){
   return result;
 }
 
+// ─── REAL-TIME WEEK STATUS ────────────────────────────────────
+// Shows live per-category progress vs targets as data is entered.
+// Only renders once any data exists for the week being viewed.
+function genWeekStatus(w){
+  if(wTotP(w)+wTotS(w)===0)return''; // no data yet — hide entirely
+
+  const expWkS=st.weekSales[w]>0?st.weekSales[w]:(gv('expWeeklySales')||8000);
+  const tgt=gv('costTarget');
+  const defaultMix={Beer:0.07,Wine:0.29,Liquor:0.64};
+
+  // Sales mix from prior weeks
+  const we=weeksEntered();
+  const dataThru=Math.min(w-1,Math.max(0,we));
+  let mix={...defaultMix};
+  if(dataThru>0){
+    const totS=SCATS.reduce((s,c)=>s+periodSales(dataThru,c),0);
+    if(totS>0)SCATS.forEach(c=>{mix[c]=periodSales(dataThru,c)/totS;});
+  }
+
+  // Days elapsed = last day index with any data + 1
+  let daysIn=0;
+  for(let d=6;d>=0;d--){
+    if(SCATS.some(c=>st.s[w][c][d]>0)||PCATS.some(c=>st.p[w][c][d]>0)){daysIn=d+1;break;}
+  }
+  daysIn=Math.max(1,daysIn);
+  const daysLeft=Math.max(0,7-daysIn);
+
+  const rows=[['Beer','🍺'],['Wine','🍷'],['Liquor','🥃'],['Consumables','⚗️']].map(([cat,icon])=>{
+    const isCons=cat==='Consumables';
+
+    if(isCons){
+      const ordered=wPurch(w,'Consumables');
+      const liqS=wSales(w,'Liquor');
+      const consTgt=catTgt('Consumables');
+      const pct=liqS>0?(ordered/liqS)*100:null;
+      let msg,col;
+      if(ordered===0){msg='No activity yet.';col='var(--faint)';}
+      else if(pct===null){msg=`${fc(ordered)} ordered — no Liquor sales yet to compare.`;col='var(--muted)';}
+      else if(pct>consTgt*1.2){msg=`${fc(ordered)} ordered — running at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target. Running hot, keep an eye on usage.`;col='var(--err)';}
+      else if(pct>consTgt){msg=`${fc(ordered)} ordered — at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target. Slightly above, stay lean.`;col='var(--warn)';}
+      else{msg=`${fc(ordered)} ordered — tracking at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target. On track ✅`;col='var(--ok)';}
+      return`<div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:var(--xs);font-weight:700;color:var(--primary);min-width:105px;white-space:nowrap;padding-top:1px">${icon} ${cat}</span>
+        <span style="font-size:var(--xs);line-height:1.6;color:${col}">${msg}</span>
+      </div>`;
+    }
+
+    // Beer / Wine / Liquor
+    const ordered=wPurch(w,cat);
+    const sold=wSales(w,cat);
+    const catT=catTgt(cat);
+    const wkCatSalesTarget=expWkS*mix[cat];
+    const wkOrdTarget=wkCatSalesTarget*(catT/100);
+    const ordRem=Math.max(0,wkOrdTarget-ordered);
+    const ordOver=Math.max(0,ordered-wkOrdTarget);
+
+    // Sales pace: project to full week
+    const salesPace=daysIn>0?(sold/daysIn)*7:0;
+    const paceVsTgt=wkCatSalesTarget>0?salesPace/wkCatSalesTarget:0;
+
+    // Order status
+    let ordMsg,ordCol;
+    if(ordered===0&&wkOrdTarget>0){
+      ordMsg=`No orders placed — ${fc(wkOrdTarget)} needed this week.`;
+      ordCol='var(--muted)';
+    } else if(ordOver>wkOrdTarget*0.1){
+      ordMsg=`${fc(ordered)} ordered — ${fc(ordOver)} over target. Monitor cost closely.`;
+      ordCol='var(--warn)';
+    } else if(ordRem<wkOrdTarget*0.1){
+      ordMsg=`${fc(ordered)} ordered — on target ✅`;
+      ordCol='var(--ok)';
+    } else {
+      ordMsg=`${fc(ordered)} ordered — ${fc(ordRem)} still needed to hit ${fc(wkOrdTarget)} target.`;
+      ordCol='var(--muted)';
+    }
+
+    // Sales pace status
+    let salesMsg,salesCol;
+    if(sold===0){
+      salesMsg='No sales yet.';salesCol='var(--faint)';
+    } else if(paceVsTgt>=0.95){
+      salesMsg=`${fc(sold)} sold (${daysIn}d) — on pace for ${fc(salesPace)} ✅`;salesCol='var(--ok)';
+    } else if(paceVsTgt>=0.8){
+      salesMsg=`${fc(sold)} sold (${daysIn}d) — pacing toward ${fc(salesPace)}, slightly below ${fc(wkCatSalesTarget)} target.`;salesCol='var(--warn)';
+    } else {
+      salesMsg=`${fc(sold)} sold (${daysIn}d) — pacing toward ${fc(salesPace)}, well below ${fc(wkCatSalesTarget)} target. Push sales.`;salesCol='var(--err)';
+    }
+
+    // Cost % for the week so far
+    const wkCostPct=sold>0?(ordered/sold)*100:null;
+    let costNote='';
+    if(wkCostPct!==null){
+      const flag=wkCostPct<=catT?'✅':wkCostPct<=catT*1.15?'⚠️':'🔴';
+      costNote=` · Cost this week: ${fd(wkCostPct,1)}% vs ${fd(catT,1)}% target ${flag}`;
+    }
+
+    return`<div style="display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:var(--xs);font-weight:700;color:var(--primary);min-width:105px;white-space:nowrap;padding-top:1px">${icon} ${cat}</span>
+      <span style="font-size:var(--xs);line-height:1.6">
+        <span style="color:${ordCol}">${ordMsg}</span>
+        <span style="color:var(--muted)"> · </span>
+        <span style="color:${salesCol}">${salesMsg}</span>
+        ${costNote?`<span style="color:var(--muted)">${costNote}</span>`:''}
+      </span>
+    </div>`;
+  }).join('');
+
+  // Total summary line
+  const totOrdered=PCATS.reduce((s,c)=>s+wPurch(w,c),0);
+  const totSold=SCATS.reduce((s,c)=>s+wSales(w,c),0);
+  const totOrdTarget=expWkS*(tgt/100);
+  const totBlendPct=totSold>0?(totOrdered/totSold)*100:null;
+  const totFlag=totBlendPct===null?'':totBlendPct<=tgt?' ✅':totBlendPct<=tgt*1.1?' ⚠️':' 🔴';
+  const totLine=`Total this week: ${fc(totSold)} sold · ${fc(totOrdered)} ordered of ${fc(totOrdTarget)} target${totBlendPct!==null?' · '+fd(totBlendPct,1)+'% blended cost'+totFlag:''}`;
+
+  return`<div style="background:var(--off);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:14px">
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Week ${w} Live Status — Day ${daysIn} of 7${daysLeft>0?` · ${daysLeft} day${daysLeft!==1?'s':''} remaining`:''}
+    </div>
+    <div style="display:grid;gap:9px">${rows}</div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--divider);font-size:var(--xs);color:var(--muted)">${totLine}</div>
+  </div>`;
+}
+
 // ─── WEEK RENDERER ────────────────────────────────────────────
 function renderWeek(w){
   const dayHdrs = DAYS.map((_,i)=>`<th>${dayHdr(w,i)}</th>`).join('');
@@ -692,6 +817,7 @@ function renderWeek(w){
         <div style="display:grid;gap:10px">${rows}</div>
       </div>`;
     })()}
+    ${genWeekStatus(w)}
     <div class="tbl-wrap"><table class="tk-tbl">
       <thead><tr>
         <th style="text-align:left;min-width:135px"></th>${dayHdrs}
