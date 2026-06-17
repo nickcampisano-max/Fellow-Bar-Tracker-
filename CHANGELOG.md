@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.16] — 2026-06-17
+### Fixed
+- **In-progress card showing "✓ Met" too early** — the week target was using `perWeekBudgetExp` (the remaining-budget average for future weeks), which shrinks as the current week's purchases accumulate. This caused "✓ Met" to trigger at ~$1,268 instead of the correct $1,720. Fixed by using the same simple formula as future week cards: `weekSalesEst × costTarget%`. Also respects per-week sales and cost % overrides on the in-progress week.
+
 ## [v5.15] — 2026-06-17
 ### Added
 - **Per-week cost target % override** on weekly target cards — a "Cost target: __%" input sits next to the existing sales estimate override. When filled in, the Order This Week total recalculates using that %, overriding the global blended target (21.5%). Useful when a specific week calls for a tighter or looser purchasing stance. Highlights teal when overridden. Persists in localStorage.

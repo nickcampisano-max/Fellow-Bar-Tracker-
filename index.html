@@ -1118,16 +1118,21 @@ function renderProjection(){
   });
 
   // ── Manager target cards ───────────────────────────────────────
-  const wP=perWeekBudgetExp;
   const wS=expWeeklyS;
 
   // Current week in-progress card
+  // Use the same simple target as future week cards: sales est × cost target %
+  // (NOT perWeekBudgetExp — that's the remaining-budget avg for future weeks only,
+  //  which drops as in-progress spending accumulates, making it appear "Met" too early)
   let inProgressCard='';
   if(we>0&&!isWeekComplete(we)){
+    const cwSalesEst=st.weekSales[we]>0?st.weekSales[we]:expWeeklyS;
+    const cwPct=st.weekCostPct[we]>0?st.weekCostPct[we]:tgt;
+    const wP=cwSalesEst*(cwPct/100);
     const cwP=SCATS.reduce((s,c)=>s+wPurch(we,c),0)+wPurch(we,'Consumables');
     const cwS=SCATS.reduce((s,c)=>s+wSales(we,c),0);
     const remP=Math.max(0,wP-cwP);
-    const remS=Math.max(0,wS-cwS);
+    const remS=Math.max(0,cwSalesEst-cwS);
     inProgressCard=`
   <div style="margin-bottom:16px">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary);margin-bottom:8px">WEEK ${we} — IN PROGRESS</div>
@@ -1150,7 +1155,7 @@ function renderProjection(){
           <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wSales(we,'Beer'))}</span></div>
           <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wSales(we,'Wine'))}</span></div>
           <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wSales(we,'Liquor'))}</span></div>
-          <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(wS)}</span></div>
+          <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(cwSalesEst)}</span></div>
           <div class="target-row"><span class="target-row-lbl" style="color:var(--primary);font-weight:700">Still needed</span><span class="target-row-val" style="color:var(--primary);font-weight:700">${remS>0?fc(remS):'✓ Met'}</span></div>
         </div>
       </div>
