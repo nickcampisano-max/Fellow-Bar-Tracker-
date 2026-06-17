@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.14] — 2026-06-17
+### Removed
+- **Scenario Planner** — the orange "Scenario Planner" table has been removed from the Forecast section. Its functionality is fully covered by: (1) per-week sales override on the weekly target cards, and (2) the real-time Week Live Status card. Removed `scenarioSales`, `customPct`, `customSales` state, `setScenarioSales()`, `setCustomPct()`, `setCustomSales()`, `setCustomPurch()` functions, and their loadFromStorage restoration.
+
 ## [v5.13] — 2026-06-15
 ### Added
 - **Week Live Status card** — appears between the Game Plan card and the data table, but only once data has been entered for that week. Updates in real time as purchases and sales are typed in. Shows per-category:
