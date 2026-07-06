@@ -4,6 +4,16 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.17] — 2026-07-06
+### Changed
+- **Consumables fully decoupled from Liquor** — previously consumables purchases rolled into Liquor's adjusted pour cost, inflating it. Now tracked as a completely independent line:
+  - Consumables cost % measured against **total bar sales** (Beer + Wine + Liquor), not Liquor alone
+  - Liquor adj. pour cost = Liquor purchases only
+  - Overall period adj. pour cost still includes consumables (added directly to numerator — no inventory effect)
+  - Default target changed from 3% → 2% (recalibrated for total bar sales denominator)
+  - Updated everywhere: daily tracker row, game plan card, live status card, projection engine, period summary, email recap, in-progress card
+- **Period 8 defaults** — period name "Period 8", start date 2026-07-06, beginning inventory fields cleared (enter from MarginEdge at period open). Press Reset to clear Period 7 data.
+
 ## [v5.16] — 2026-06-17
 ### Fixed
 - **In-progress card showing "✓ Met" too early** — the week target was using `perWeekBudgetExp` (the remaining-budget average for future weeks), which shrinks as the current week's purchases accumulate. This caused "✓ Met" to trigger at ~$1,268 instead of the correct $1,720. Fixed by using the same simple formula as future week cards: `weekSalesEst × costTarget%`. Also respects per-week sales and cost % overrides on the in-progress week.

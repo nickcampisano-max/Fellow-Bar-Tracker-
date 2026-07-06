@@ -232,11 +232,11 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
     <div class="setup-grid">
       <div class="field">
         <label class="flbl" for="pName">Period Name</label>
-        <input class="fin" id="pName" type="text" value="Period 7" oninput="render()">
+        <input class="fin" id="pName" type="text" value="Period 8" oninput="render()">
       </div>
       <div class="field">
         <label class="flbl" for="pStart">Period Start</label>
-        <input class="fin" id="pStart" type="date" value="2026-06-08" oninput="render()">
+        <input class="fin" id="pStart" type="date" value="2026-07-06" oninput="render()">
       </div>
     </div>
 
@@ -245,15 +245,15 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
     <div class="setup-grid" style="margin-top:8px">
       <div class="field">
         <label class="flbl">Beer</label>
-        <div class="dollar"><input class="fin" id="begBeer" type="text" inputmode="decimal" value="1007.53" oninput="render()"></div>
+        <div class="dollar"><input class="fin" id="begBeer" type="text" inputmode="decimal" placeholder="Enter from MarginEdge" oninput="render()"></div>
       </div>
       <div class="field">
         <label class="flbl">Wine</label>
-        <div class="dollar"><input class="fin" id="begWine" type="text" inputmode="decimal" value="2869.13" oninput="render()"></div>
+        <div class="dollar"><input class="fin" id="begWine" type="text" inputmode="decimal" placeholder="Enter from MarginEdge" oninput="render()"></div>
       </div>
       <div class="field">
         <label class="flbl">Liquor</label>
-        <div class="dollar"><input class="fin" id="begLiquor" type="text" inputmode="decimal" value="4696.00" oninput="render()"></div>
+        <div class="dollar"><input class="fin" id="begLiquor" type="text" inputmode="decimal" placeholder="Enter from MarginEdge" oninput="render()"></div>
       </div>
       <div class="field">
         <label class="flbl">Total Beginning Inventory</label>
@@ -312,8 +312,8 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
       </div>
       <div class="field">
         <label class="flbl">Consumables Target</label>
-        <div class="pct"><input class="fin" id="tgtConsumables" type="text" inputmode="decimal" value="3" oninput="render()"></div>
-        <div class="field-note">Target: 3% or under · Tracked for cost only</div>
+        <div class="pct"><input class="fin" id="tgtConsumables" type="text" inputmode="decimal" value="2" oninput="render()"></div>
+        <div class="field-note">Target: 2% or under · Tracked vs total bar sales</div>
       </div>
       <div class="field">
         <label class="flbl">Expected Weekly Sales</label>
@@ -445,7 +445,7 @@ function hasActualEnding(){
 // Returns: { beg, purch, sales, estEnding, actualEnding, endingUsed, isEstimated,
 //            periodCostPct, adjPourCost, adjPourCostIsEst, drift }
 //
-// PURCHASES for Liquor include Consumables (cost purposes only, not inv.)
+// Consumables tracked independently — NOT rolled into Liquor cost
 // ESTIMATED ending = beg + purchases - (sales × cat cost target %)
 //   → inventory only moves at cost, not at revenue
 // ADJUSTED pour cost = (beg + purchases - ending) / sales
@@ -455,8 +455,8 @@ function catCalc(cat, thru){
   const beg = begInv(cat);
   // Physical purchases (for inventory tracking, no Shamrock)
   const physPurch = periodPurch(thru, cat);
-  // Total cost purchases (Shamrock rolls into Liquor for cost)
-  const costPurch = physPurch + (cat==='Liquor' ? periodPurch(thru,'Consumables') : 0);
+  // Consumables tracked independently — Liquor costPurch is Liquor only
+  const costPurch = physPurch;
   const sales = periodSales(thru, cat);
   const tgt = catTgt(cat) / 100;
 
@@ -541,15 +541,15 @@ function genWeekPlan(w){
   // ── Consumables ───────────────────────────────────────────────
   const consTgt=catTgt('Consumables');
   if(dataThru===0){
-    result.Consumables=`Opening week — purchase to rhythm. Target: ${fp(consTgt)} of Liquor sales.`;
+    result.Consumables=`Opening week — purchase to rhythm. Target: ${fp(consTgt)} of total bar sales.`;
   } else {
     const consP=periodPurch(dataThru,'Consumables');
-    const liqS=periodSales(dataThru,'Liquor');
-    const pct=liqS>0?(consP/liqS)*100:null;
-    if(pct===null) result.Consumables='No Liquor sales data yet — purchase to usual rhythm.';
-    else if(pct>consTgt*1.2) result.Consumables=`Running hot at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target — trim this week and check usage.`;
-    else if(pct>consTgt) result.Consumables=`Slightly above target (${fd(pct,1)}% vs ${fd(consTgt,1)}%) — stay lean this week.`;
-    else result.Consumables=`On track at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target — maintain current pace.`;
+    const totS=SCATS.reduce((s,c)=>s+periodSales(dataThru,c),0);
+    const pct=totS>0?(consP/totS)*100:null;
+    if(pct===null) result.Consumables='No sales data yet — purchase to usual rhythm.';
+    else if(pct>consTgt*1.2) result.Consumables=`Running hot at ${fd(pct,1)}% vs ${fd(consTgt,1)}% of total sales — trim this week and check usage.`;
+    else if(pct>consTgt) result.Consumables=`Slightly above target (${fd(pct,1)}% vs ${fd(consTgt,1)}% of total sales) — stay lean this week.`;
+    else result.Consumables=`On track at ${fd(pct,1)}% vs ${fd(consTgt,1)}% of total sales — maintain current pace.`;
   }
 
   return result;
@@ -587,15 +587,15 @@ function genWeekStatus(w){
 
     if(isCons){
       const ordered=wPurch(w,'Consumables');
-      const liqS=wSales(w,'Liquor');
+      const totBarS=SCATS.reduce((s,c)=>s+wSales(w,c),0);
       const consTgt=catTgt('Consumables');
-      const pct=liqS>0?(ordered/liqS)*100:null;
+      const pct=totBarS>0?(ordered/totBarS)*100:null;
       let msg,col;
       if(ordered===0){msg='No activity yet.';col='var(--faint)';}
-      else if(pct===null){msg=`${fc(ordered)} ordered — no Liquor sales yet to compare.`;col='var(--muted)';}
-      else if(pct>consTgt*1.2){msg=`${fc(ordered)} ordered — running at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target. Running hot, keep an eye on usage.`;col='var(--err)';}
-      else if(pct>consTgt){msg=`${fc(ordered)} ordered — at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target. Slightly above, stay lean.`;col='var(--warn)';}
-      else{msg=`${fc(ordered)} ordered — tracking at ${fd(pct,1)}% vs ${fd(consTgt,1)}% target. On track ✅`;col='var(--ok)';}
+      else if(pct===null){msg=`${fc(ordered)} ordered — no sales yet to compare.`;col='var(--muted)';}
+      else if(pct>consTgt*1.2){msg=`${fc(ordered)} ordered — running at ${fd(pct,1)}% vs ${fd(consTgt,1)}% of total sales. Running hot, keep an eye on usage.`;col='var(--err)';}
+      else if(pct>consTgt){msg=`${fc(ordered)} ordered — at ${fd(pct,1)}% vs ${fd(consTgt,1)}% of total sales. Slightly above, stay lean.`;col='var(--warn)';}
+      else{msg=`${fc(ordered)} ordered — tracking at ${fd(pct,1)}% vs ${fd(consTgt,1)}% of total sales. On track ✅`;col='var(--ok)';}
       return`<div style="display:flex;gap:10px;align-items:flex-start">
         <span style="font-size:var(--xs);font-weight:700;color:var(--primary);min-width:105px;white-space:nowrap;padding-top:1px">${icon} ${cat}</span>
         <span style="font-size:var(--xs);line-height:1.6;color:${col}">${msg}</span>
@@ -741,22 +741,22 @@ function renderWeek(w){
       <td style="text-align:right;font-weight:700;color:${wcol}">${wc!==null?fp(wc):'—'}</td></tr>`;
   }).join('');
 
-  // Consumables cost % row — uses total Liquor sales as denominator (no separate sales category)
+  // Consumables cost % row — uses total bar sales as denominator
   const consDayCells=Array(7).fill(0).map((_,i)=>{
     const p=st.p[w]['Consumables'][i];
-    const s=st.s[w]['Liquor'][i]; // Consumables cost measured against Liquor sales
+    const s=SCATS.reduce((tot,c)=>tot+st.s[w][c][i],0); // total bar sales
     if(s===0)return`<td style="color:var(--faint);text-align:right">—</td>`;
     const c=(p/s)*100, t=gv('tgtConsumables');
     const col=c<=t?'var(--ok)':c<=t*1.5?'var(--warn)':'var(--err)';
     return`<td style="color:${col};font-weight:700;text-align:right">${fp(c)}</td>`;
   }).join('');
   const consWP=wPurch(w,'Consumables');
-  const consWS=wSales(w,'Liquor');
+  const consWS=SCATS.reduce((s,c)=>s+wSales(w,c),0); // total bar sales
   const consWC=consWS>0?(consWP/consWS)*100:null;
   const consTgt=gv('tgtConsumables');
   const consWCol=consWC===null?'var(--faint)':consWC<=consTgt?'var(--ok)':consWC<=consTgt*1.5?'var(--warn)':'var(--err)';
   const consRow=`<tr class="cost-row" style="background:oklch(from var(--warn-hl) l c h / 0.3)">
-    <td style="padding-left:10px;color:var(--warn);font-weight:700">Consumables Cost % <span style="font-size:9px;color:var(--muted);font-weight:400">(vs Liquor sales · target: ${fp(consTgt)})</span></td>
+    <td style="padding-left:10px;color:var(--warn);font-weight:700">Consumables Cost % <span style="font-size:9px;color:var(--muted);font-weight:400">(vs total bar sales · target: ${fp(consTgt)})</span></td>
     ${consDayCells}
     <td style="text-align:right;font-weight:700;color:${consWCol}">${consWC!==null?fp(consWC):'—'}</td></tr>`;
 
@@ -885,6 +885,8 @@ function renderKPIs(){
       adjS+=r.sales;
     }
   });
+  // Consumables: no inventory, pure cost — add directly to numerator
+  adjP+=periodPurch(4,'Consumables');
   const adjCost=adjS>0?(adjP/adjS)*100:null;
   const tgt=gv('costTarget');
   const isEst=!hasActualEnding();
@@ -1025,7 +1027,7 @@ function renderProjection(){
         const catEvAdj=weekTotS>0?evAdj*(catS/weekTotS):0;
         adjS+=Math.max(0,catS-catEvAdj);
       }
-      const p=periodPurch(velWks,cat)+(cat==='Liquor'?periodPurch(velWks,'Consumables'):0);
+      const p=periodPurch(velWks,cat); // Consumables tracked independently
       curAvgS=adjS/velWks;
       curAvgP=p/velWks;
     }
@@ -1043,6 +1045,7 @@ function renderProjection(){
   // period at the blended pour cost target given what's already been spent.
   let totalActCostPurch=0,totalActSales=0;
   SCATS.forEach(c=>{const r=catCalc(c,we);totalActCostPurch+=r.costPurch;totalActSales+=r.sales;});
+  totalActCostPurch+=periodPurch(we,'Consumables'); // Consumables tracked independently
   const totalProjRemSales=SCATS.reduce((s,c)=>s+vel[c].avgS*weeksLeft,0);
   const totalPeriodSales=totalActSales+totalProjRemSales;
   const totalPurchBudget=(tgt/100)*totalPeriodSales;
@@ -1078,9 +1081,10 @@ function renderProjection(){
     let projBeg=0,projTotP=0,projEndTot=0;
     SCATS.forEach(c=>{
       projBeg+=cats[c].beg;
-      projTotP+=(periodPurch(we,c)+(c==='Liquor'?periodPurch(we,'Consumables'):0))+cats[c].projPurchPW*remWeeks.length;
+      projTotP+=periodPurch(we,c)+cats[c].projPurchPW*remWeeks.length;
       projEndTot+=cats[c].projEnding;
     });
+    projTotP+=periodPurch(we,'Consumables'); // add consumables actual (no projected — tracked separately)
     const projAdj=projTotS>0?((projBeg+projTotP-projEndTot)/projTotS)*100:null;
     if(projAdj!==null){
       const onTrack=projAdj<=tgt;
@@ -1143,7 +1147,8 @@ function renderProjection(){
         <div class="target-breakdown">
           <div class="target-row"><span class="target-row-lbl">Beer</span><span class="target-row-val">${fc(wPurch(we,'Beer'))}</span></div>
           <div class="target-row"><span class="target-row-lbl">Wine</span><span class="target-row-val">${fc(wPurch(we,'Wine'))}</span></div>
-          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wPurch(we,'Liquor')+wPurch(we,'Consumables'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Liquor</span><span class="target-row-val">${fc(wPurch(we,'Liquor'))}</span></div>
+          <div class="target-row"><span class="target-row-lbl">Consumables</span><span class="target-row-val">${fc(wPurch(we,'Consumables'))}</span></div>
           <div class="target-row" style="margin-top:6px;border-top:1px solid var(--divider);padding-top:6px"><span class="target-row-lbl" style="color:var(--muted)">Week target</span><span class="target-row-val">${fc(wP)}</span></div>
           <div class="target-row"><span class="target-row-lbl" style="color:var(--primary);font-weight:700">Still needed</span><span class="target-row-val" style="color:var(--primary);font-weight:700">${remP>0?fc(remP):'✓ Met'}</span></div>
         </div>
@@ -1357,9 +1362,9 @@ function renderPeriodSummary(){
     </tr>`;
   }).join('');
 
-  // Consumables cost-only row for period summary
+  // Consumables cost-only row for period summary — vs total bar sales
   let consPS_P=0,consPS_S=0;
-  for(let w=1;w<=4;w++){consPS_P+=wPurch(w,'Consumables');consPS_S+=wSales(w,'Liquor');}
+  for(let w=1;w<=4;w++){consPS_P+=wPurch(w,'Consumables');SCATS.forEach(c=>{consPS_S+=wSales(w,c);});}
   const consPS_CostPct=consPS_S>0?(consPS_P/consPS_S)*100:null;
   const consPS_Tgt=gv('tgtConsumables');
   const consPS_Col=consPS_CostPct===null?'var(--muted)':consPS_CostPct<=consPS_Tgt?'var(--ok)':consPS_CostPct<=consPS_Tgt*1.5?'var(--warn)':'var(--err)';
@@ -1369,7 +1374,7 @@ function renderPeriodSummary(){
     <td style="color:var(--faint)">—</td>
     <td style="color:var(--faint)">—</td>
     <td>${consPS_P>0?fc(consPS_P):'—'}</td>
-    <td style="color:var(--faint);font-size:10px">vs Liquor sales</td>
+    <td style="color:var(--faint);font-size:10px">vs total bar sales</td>
     <td style="font-weight:700;color:${consPS_Col}">${consPS_CostPct!==null?fp(consPS_CostPct):'—'}</td>
     <td style="font-weight:700;color:${consPS_Col}">${consPS_CostPct!==null?fp(consPS_CostPct)+' (cost only)':'—'}</td>
   </tr>`;
@@ -1380,6 +1385,10 @@ function renderPeriodSummary(){
     tEnd+=r.endingUsed;tCP+=r.costPurch;tS+=r.sales;
     if(r.sales>0)tAdjNum+=(r.beg+r.costPurch-r.endingUsed);
   });
+  // Consumables: add purchases to total cost; no inventory effect
+  const consTotal=periodPurch(4,'Consumables');
+  tCP+=consTotal;
+  tAdjNum+=consTotal;
   const tDiff=tEnd-tBeg;
   const tAdj=tS>0?(tAdjNum/tS)*100:null;
   const bTgt=gv('costTarget');
@@ -1561,7 +1570,7 @@ function generateWeekEmail(){
 
   SCATS.forEach(cat=>{
     const s=wSales(recapWeek,cat);
-    const p=wPurch(recapWeek,cat)+(cat==='Liquor'?wPurch(recapWeek,'Consumables'):0);
+    const p=wPurch(recapWeek,cat);
     const pct=s>0?(p/s)*100:null;
     const catT=catTgt(cat);
     const flag=pct===null?'':pct<=catT?' ✅':pct<=catT*1.08?' ⚠️':' 🔴';
