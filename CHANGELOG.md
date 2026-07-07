@@ -6,12 +6,14 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ## [v5.17] — 2026-07-06
 ### Changed
-- **Consumables fully decoupled from Liquor** — previously consumables purchases rolled into Liquor's adjusted pour cost, inflating it. Now tracked as a completely independent line:
-  - Consumables cost % measured against **total bar sales** (Beer + Wine + Liquor), not Liquor alone
-  - Liquor adj. pour cost = Liquor purchases only
-  - Overall period adj. pour cost still includes consumables (added directly to numerator — no inventory effect)
-  - Default target changed from 3% → 2% (recalibrated for total bar sales denominator)
-  - Updated everywhere: daily tracker row, game plan card, live status card, projection engine, period summary, email recap, in-progress card
+- **Consumables has full inventory tracking** — now treated as a proper inventory category alongside Beer, Wine, and Liquor:
+  - Beginning and ending inventory fields added to Period Setup (enter from MarginEdge)
+  - Estimated ending inventory = beg + purchases − (Liquor sales × consumables target %)
+  - Drift tracked (building vs. drawing down) and shown in KPI tile
+  - Consumables row in Period Summary now shows full inventory columns: beg, ending, difference, purchases, period cost %, adj pour cost
+  - Included in total beginning inventory auto-sum and total ending inventory
+- **Consumables decoupled from Liquor** — Liquor adj. pour cost = Liquor purchases only. Consumables flows into overall period adj. pour cost through its own inventory formula (beg + purch − end), not as a raw add
+- **Consumables cost % denominator = Liquor sales** (confirmed — unchanged from original design)
 - **Period 8 defaults** — period name "Period 8", start date 2026-07-06, beginning inventory fields cleared (enter from MarginEdge at period open). Press Reset to clear Period 7 data.
 
 ## [v5.16] — 2026-06-17
