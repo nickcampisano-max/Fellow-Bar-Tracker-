@@ -375,6 +375,9 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
   <!-- ── PROJECTION ─────────────────────────────────────────── -->
   <div id="proj-section"></div>
 
+  <!-- ── PERIOD CLOSE ANALYSIS ──────────────────────────────── -->
+  <div id="period-close"></div>
+
   <!-- ── PERIOD SUMMARY ────────────────────────────────────── -->
   <div id="period-summary"></div>
 
@@ -1361,6 +1364,145 @@ function renderProjection(){
 
 function buildAlerts(){ return ''; }
 
+// ─── PERIOD CLOSE ANALYSIS ────────────────────────────────────
+function renderPeriodClose(){
+  const el=$('period-close');
+  if(!el)return;
+  if(!hasActualEnding()){el.innerHTML='';return;}
+
+  const tgt=gv('costTarget');
+  const pName=$('pName').value||'This Period';
+
+  // Overall adj pour cost
+  let adjP=0,adjS=0;
+  SCATS.forEach(c=>{
+    const r=catCalc(c,4);
+    if(r.sales>0){adjP+=(r.beg+r.costPurch-r.endingUsed);adjS+=r.sales;}
+  });
+  const rConsCl=catCalc('Consumables',4);
+  adjP+=(rConsCl.beg+rConsCl.costPurch-rConsCl.endingUsed);
+  const adjCost=adjS>0?(adjP/adjS)*100:null;
+  const overallCol=adjCost===null?'var(--muted)':adjCost<=tgt?'var(--ok)':adjCost<=tgt*1.05?'var(--warn)':'var(--err)';
+  const overallMsg=adjCost===null?'—':adjCost<=tgt?'✅ On target':adjCost<=tgt*1.05?'⚠️ Slightly over':'🔴 Over target';
+
+  // Per-category rows
+  const icons={Beer:'🍺',Wine:'🍷',Liquor:'🥃',Consumables:'⚗️'};
+  const allCats=[...SCATS,'Consumables'];
+  const catRows=allCats.map(cat=>{
+    const r=catCalc(cat,4);
+    const catT=catTgt(cat);
+    const isCons=cat==='Consumables';
+
+    // Pour cost metric
+    const pc=isCons?r.periodCostPct:r.adjPourCost;
+    const pcFlag=pc===null?'':pc<=(isCons?catT:catT)?'✅':pc<=catT*(isCons?1.2:1.1)?'⚠️':'🔴';
+    const pcCol=pc===null?'var(--muted)':pc<=catT?'var(--ok)':pc<=catT*(isCons?1.2:1.1)?'var(--warn)':'var(--err)';
+    const pcLabel=isCons?`${fd(pc,1)}% vs ${fp(catT)} (Liquor sales)`:pc!==null?`${fd(pc,1)}% vs ${fp(catT)} target`:'—';
+
+    // Inventory drift narrative
+    const drift=r.drift;
+    let driftNote,driftCol;
+    if(Math.abs(drift)<100){driftNote='Inventory flat';driftCol='var(--muted)';}
+    else if(drift<=-300){driftNote=`Drew down ${fcs(Math.abs(drift))} — restock early next period`;driftCol='var(--err)';}
+    else if(drift<0){driftNote=`Drew down ${fcs(Math.abs(drift))} — monitor opening stock`;driftCol='var(--warn)';}
+    else if(drift>=300){driftNote=`Built ${fcs(drift)} above opening — ease back on orders`;driftCol='var(--warn)';}
+    else{driftNote=`Slight build of ${fcs(drift)}`;driftCol='var(--muted)';}
+
+    // Next period action
+    let action='';
+    if(cat==='Beer'){
+      if(pc>catT*1.1)action='Restock early and tighten weekly order pace.';
+      else if(drift<=-300)action='Restock early — starting below opening. Maintain weekly targets.';
+      else action='Maintain rhythm.';
+    } else if(cat==='Wine'){
+      if(pc>catT*1.1)action='Review ordering cadence — running above target.';
+      else if(drift<=-200)action='Restock early — inventory drew down.';
+      else action='On track — maintain pace.';
+    } else if(cat==='Liquor'){
+      if(pc>catT*1.1)action='Pull back on Liquor purchases.';
+      else if(pc<catT*0.85)action='Liquor came in well under target — slight increase in orders is fine.';
+      else action='On track — maintain weekly targets.';
+    } else {
+      if(pc>catT)action=`Over target at ${fd(pc,1)}% vs ${fp(catT)} — track tightly vs Liquor sales.`;
+      else action='On track — maintain rhythm.';
+    }
+
+    return`
+    <div style="padding:10px 0;border-bottom:1px solid var(--divider)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:var(--xs);font-weight:700;min-width:110px">${icons[cat]} ${cat}</span>
+        <span style="font-size:var(--xs);font-weight:700;color:${pcCol}">${pcLabel} ${pcFlag}</span>
+      </div>
+      <div style="display:flex;gap:16px;padding-left:118px;flex-wrap:wrap">
+        <span style="font-size:10px;color:${driftCol}">${driftNote}</span>
+        <span style="font-size:10px;color:var(--muted);font-style:italic">→ ${action}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Starting inventory table
+  const invRows=allCats.map(cat=>{
+    const r=catCalc(cat,4);
+    const end=r.endingUsed;
+    const beg=r.beg;
+    const diff=end-beg;
+    let flag,col;
+    if(diff<=-300){flag='🔴 Low — restock early';col='var(--err)';}
+    else if(diff<-100){flag='⚠️ Below opening';col='var(--warn)';}
+    else if(Math.abs(diff)<=100){flag='✅ Healthy';col='var(--ok)';}
+    else{flag='📦 Above opening';col='var(--warn)';}
+    return`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--divider);font-size:var(--xs)">
+      <span style="font-weight:600;min-width:110px">${icons[cat]} ${cat}</span>
+      <span style="font-weight:700">${fc(end)}</span>
+      <span style="font-size:10px;color:${diff>=0?'var(--ok)':Math.abs(diff)>200?'var(--err)':'var(--warn)'}">${diff>=0?'+':''}${fcs(diff)} vs opening</span>
+      <span style="font-size:10px;color:${col};font-weight:600">${flag}</span>
+    </div>`;
+  }).join('');
+
+  // YoY context
+  const periodNum=getPeriodNum();
+  const lyData=periodNum&&HISTORY_LY[periodNum]?HISTORY_LY[periodNum]:null;
+  let yoyLine='';
+  if(lyData){
+    const lyTot=lyData.Beer+lyData.Wine+lyData.Liquor;
+    const cyTot=SCATS.reduce((s,c)=>s+periodSales(4,c),0);
+    const yoyDiff=cyTot-lyTot;
+    const yoyPct=lyTot>0?(yoyDiff/lyTot)*100:null;
+    if(yoyPct!==null){
+      const yoyCol=yoyPct>=-5?'var(--ok)':yoyPct>=-15?'var(--warn)':'var(--err)';
+      yoyLine=`<div style="margin-top:12px;padding:8px 12px;background:var(--off);border-radius:var(--r-md);font-size:var(--xs)">
+        <span style="color:var(--muted)">vs Last Year Same Period: </span>
+        <span style="font-weight:700;color:${yoyCol}">${yoyDiff>=0?'+':''}${fcs(yoyDiff)} (${fd(yoyPct,1)}%)</span>
+        ${yoyPct<-10?`<span style="color:var(--err);margin-left:8px">⚠️ Volume gap — drive covers next period</span>`:''}
+      </div>`;
+    }
+  }
+
+  el.innerHTML=`
+  <div class="card" style="border:2px solid ${overallCol};margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🏁 Period Close Analysis</div>
+        <div style="font-size:var(--lg);font-weight:800;color:var(--text);margin-top:2px">${pName} — Final Results</div>
+        <div style="font-size:var(--xs);color:var(--muted);margin-top:2px">Actual ending inventory locked in from MarginEdge</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:32px;font-weight:800;color:${overallCol};line-height:1">${adjCost!==null?fp(adjCost):'—'}</div>
+        <div style="font-size:10px;color:var(--muted)">Adj. pour cost · target ${fp(tgt)}</div>
+        <div style="font-size:var(--xs);font-weight:700;color:${overallCol};margin-top:2px">${overallMsg}</div>
+      </div>
+    </div>
+
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Category Results &amp; Next Period Actions</div>
+    ${catRows}
+
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:16px;margin-bottom:4px">Opening Inventory — Next Period</div>
+    ${invRows}
+    ${yoyLine}
+  </div>`;
+}
+
 
 function renderPeriodSummary(){
   const isEst=!hasActualEnding();
@@ -1544,6 +1686,7 @@ function render(){
   renderKPIs();
   renderYoY();
   renderProjection();
+  renderPeriodClose();
   renderPeriodSummary();
 }
 function setWeek(w){

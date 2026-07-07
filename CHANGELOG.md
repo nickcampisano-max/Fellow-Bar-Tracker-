@@ -4,6 +4,15 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.18] — 2026-07-07
+### Added
+- **Period Close Analysis card** — auto-generates when actual ending inventory is entered from MarginEdge at period close. Shows:
+  - Overall adj. pour cost vs. blended target with pass/fail color badge
+  - Per-category (Beer, Wine, Liquor, Consumables): adj. pour cost vs. target (✅ ⚠️ 🔴), inventory drift narrative, and plain-language action note for next period
+  - Opening Inventory for Next Period table: each category's ending value, $ vs. opening flag (Low / Below Opening / Healthy / Above Opening), color-coded
+  - YoY sales variance note (current period vs. same period last year) when historical data is available
+  - Card disappears when no actual ending inventory is entered (mid-period view unchanged)
+
 ## [v5.17] — 2026-07-06
 ### Changed
 - **Consumables has full inventory tracking** — now treated as a proper inventory category alongside Beer, Wine, and Liquor:
