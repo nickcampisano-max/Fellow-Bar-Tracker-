@@ -2209,8 +2209,52 @@ window.resetData = function() {
   try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
 };
 
+// ─── SEED HISTORICAL PERIODS ──────────────────────────────────
+// P6 and P7 are baked in — injected into archive on first load if missing.
+const SEED_PERIODS=[
+  {name:'Period 6',startDate:'2026-05-11',savedAt:'2026-06-09T00:00:00.000Z',
+   setup:{pName:'Period 6',pStart:'2026-05-11',begBeer:'775.71',begWine:'2669.22',begLiquor:'5296.51',begConsumables:'',begTotal:'',endBeer:'1007.53',endWine:'2869.13',endLiquor:'4696.00',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'9000',ppW1:'',ppW2:'',ppW3:'',ppW4:''},
+   weeks:{week:4,
+     p:{1:{Beer:[0,195,0,0,99,0,0],Wine:[0,317.88,604.64,0,0,0,0],Liquor:[0,308.09,759.25,0,0,0,0],Consumables:[0,0,0,0,0,0,336.71]},
+        2:{Beer:[0,170,0,0,305,0,0],Wine:[0,407.28,233.88,0,0,0,0],Liquor:[0,0,196.48,453,0,0,0],Consumables:[0,0,0,0,0,0,124.25]},
+        3:{Beer:[0,0,0,0,248,0,0],Wine:[0,0,700.57,0,0,0,0],Liquor:[0,0,159.14,394.74,239,0,0],Consumables:[0,0,0,0,0,0,268.94]},
+        4:{Beer:[0,0,0,0,0,0,0],Wine:[0,627.64,0,0,74.94,0,0],Liquor:[0,0,143.92,0,64.83,0,0],Consumables:[0,0,0,0,0,0,194.24]}},
+     s:{1:{Beer:[116,166,112,70,114,50,56],Wine:[118,672,547,297,672,243,281],Liquor:[635,1112,1074.5,1000,1357,602.5,473]},
+        2:{Beer:[120,217,148,130,72,165,19],Wine:[158,756,740,209,449,410,220],Liquor:[298,1019.48,1026,1116,901.5,1477.5,528]},
+        3:{Beer:[24,17,69,138,127,82,82],Wine:[71,356,474,504,507,351,527],Liquor:[515.5,515.5,538,605.5,1554,567,673.5]},
+        4:{Beer:[24,35,141,118,78,53,46],Wine:[213,203,209,391,450,452.01,177],Liquor:[295.5,1571,935,660,997,507,614]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}},
+
+  {name:'Period 7',startDate:'2026-06-08',savedAt:'2026-07-07T00:00:00.000Z',
+   setup:{pName:'Period 7',pStart:'2026-06-08',begBeer:'1007.53',begWine:'2869.13',begLiquor:'4270.86',begConsumables:'832.50',begTotal:'',endBeer:'649.72',endWine:'2842.32',endLiquor:'4290.55',endConsumables:'708.40',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'8000',ppW1:'9768',ppW2:'10179',ppW3:'8298',ppW4:'8169'},
+   weeks:{week:4,
+     p:{1:{Beer:[0,195,0,0,205,0,0],Wine:[0,137.88,287.81,0,0,0,0],Liquor:[0,0,700.55,0,0,0,0],Consumables:[0,0,0,0,0,0,177.56]},
+        2:{Beer:[0,0,0,0,0,0,0],Wine:[0,90,481.2,0,0,0,0],Liquor:[0,80.5,823.82,0,0,0,0],Consumables:[0,0,0,0,0,0,373.52]},
+        3:{Beer:[0,0,0,0,155,0,0],Wine:[0,0,218.94,0,0,0,0],Liquor:[0,223.6,540.34,0,0,0,0],Consumables:[0,0,0,0,0,0,68.76]},
+        4:{Beer:[0,0,0,0,0,0,0],Wine:[0,426.21,0,0,0,0,0],Liquor:[0,236.94,362.58,0,0,0,0],Consumables:[0,0,0,0,0,0,285.54]}},
+     s:{1:{Beer:[46,72,99,180,189,54,53],Wine:[177,235,277,596,242,116,346],Liquor:[614,928,608,1287,1090.51,533,409]},
+        2:{Beer:[74,94,65,116,83,35,41],Wine:[187,299,351,549,285,275,303],Liquor:[590,394,346,767,1452,634,405]},
+        3:{Beer:[74,155,73,140,145,130,30],Wine:[199,255,47,512,417,337,328],Liquor:[388,544,522,669,1371,1212,662]},
+        4:{Beer:[111,67,124,11,102,0,30],Wine:[175,294,83,266,126,0,328],Liquor:[469,339,379,957,594,0,662]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}}
+];
+
+function seedArchive(){
+  let changed=false;
+  SEED_PERIODS.forEach(seed=>{
+    if(!periodsArchive.find(p=>p.name===seed.name)){
+      periodsArchive.push(seed);
+      changed=true;
+    }
+  });
+  // Keep oldest first
+  periodsArchive.sort((a,b)=>a.startDate<b.startDate?-1:1);
+  if(changed)saveArchive();
+}
+
 // Load saved data on startup, then render
 loadArchive();
+seedArchive();
 const loaded = loadFromStorage();
 render();
 if (loaded) {

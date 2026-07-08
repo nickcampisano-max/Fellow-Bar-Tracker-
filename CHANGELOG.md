@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.25] — 2026-07-07
+### Added
+- **Period 6 and Period 7 baked into the app** — full daily purchase and sales data seeded directly in the JS. On first load, `seedArchive()` checks if P6/P7 are missing from the archive and injects them automatically. No console script needed. Periods 1–5 will be added the same way once screenshot data is received.
+
 ## [v5.24] — 2026-07-07
 ### Added
 - **Edit mode for archived periods** — while viewing a historical period, an "✏️ Edit" button appears in the banner. Clicking it unlocks all inputs (banner turns orange) so corrections can be made. "✓ Save Changes" writes the edits back to the archive. "✕ Discard" reverts all changes to the original snapshot. Switching periods while editing automatically discards unsaved changes.
