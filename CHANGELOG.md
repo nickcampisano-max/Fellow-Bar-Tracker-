@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.28] — 2026-07-08
+### Fixed
+- **Period tabs now appear on first page load** — moved `<div id="period-tabbar">` from after the `</script>` tag to before it, so the element exists in the DOM when `render()` runs on startup. Previously `renderTabs()` silently exited early because the div hadn't been parsed yet, resulting in a visible but empty tab strip. Removed the now-unnecessary `window.addEventListener('load', render)` workaround.
+
 ## [v5.27] — 2026-07-08
 ### Fixed
 - **Liquor cost target corrected to 15%** — HTML default was set to 14% in v5.19; corrected to match actual Period 8 target.
