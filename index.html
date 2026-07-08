@@ -1682,6 +1682,16 @@ function renderYoY(){
 // ─── MAIN RENDER ──────────────────────────────────────────────
 function render(){
   $('wk-dates').textContent=wkRange(st.week);
+  // ── Inventory auto-totals (run first so they always show) ──
+  const _bT=$('begTotalAuto');
+  if(_bT) _bT.textContent=fc(gv('begBeer')+gv('begWine')+gv('begLiquor')+gv('begConsumables'));
+  const _eTel=$('endTotalAuto');
+  if(_eTel){
+    const _eB=gvNull('endBeer'),_eW=gvNull('endWine'),_eL=gvNull('endLiquor'),_eC=gvNull('endConsumables');
+    const _any=_eB!==null||_eW!==null||_eL!==null||_eC!==null;
+    const _sum=[_eB,_eW,_eL,_eC].filter(v=>v!==null).reduce((a,b)=>a+b,0);
+    _eTel.textContent=_any?fc(_sum):'—';
+  }
   $('week-panel').innerHTML=renderWeek(st.week);
   renderKPIs();
   renderYoY();

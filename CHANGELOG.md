@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.20] — 2026-07-07
+### Fixed
+- **Beginning and ending inventory auto-totals not showing** — moved the auto-total calculation to the top of `render()` so it fires immediately on any input, before the rest of the render chain runs. Also added Consumables to the ending inventory auto-total. Previously these updates lived inside `renderKPIs()` and could fail silently if anything earlier in that function stalled.
+
 ## [v5.19] — 2026-07-07
 ### Changed
 - **Period 8 cost targets** updated to match new period targets:
