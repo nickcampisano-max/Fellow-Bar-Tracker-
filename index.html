@@ -2322,6 +2322,8 @@ loadArchive();
 seedArchive();
 const loaded = loadFromStorage();
 render();
+// Period tab bar div sits after this script tag, so re-render once DOM is fully parsed
+window.addEventListener('load', render);
 if (loaded) {
   // Show subtle toast that data was restored
   setTimeout(() => {
