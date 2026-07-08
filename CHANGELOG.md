@@ -4,6 +4,15 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.19] — 2026-07-07
+### Changed
+- **Period 8 cost targets** updated to match new period targets:
+  - Wine: 33% → 25%
+  - Liquor: 20% → 14%
+  - Consumables: 3% → 5%
+  - Beer: 25% (unchanged)
+  - Blended target: 21.5% (unchanged)
+
 ## [v5.18] — 2026-07-07
 ### Added
 - **Period Close Analysis card** — auto-generates when actual ending inventory is entered from MarginEdge at period close. Shows:
