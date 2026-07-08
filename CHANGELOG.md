@@ -4,6 +4,14 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.23] — 2026-07-07
+### Added
+- **Period Tab Bar** — Excel-style tab bar fixed at the bottom of the screen. One tab per period, scrollable as history grows. Active current period shown with a teal dot and "CURRENT" label.
+- **Period Archive** — completed periods saved to `fellowbar_archive_v1` localStorage key (separate from weekly data). Archive persists independently of Reset.
+- **History View** — clicking any archived tab loads that period in read-only mode. A sticky blue banner appears at the top ("Viewing Period 7 · Jun 8 — Read Only") with a "Return to Current Period" button. All inputs are locked while in history view. Week tabs still navigate within the historical period.
+- **"＋ New Period" tab** — archives the current period, increments period name (Period 8 → Period 9), advances start date by 28 days, carries ending inventory forward as new beginning inventory, and auto-fills Prior Period Reference fields from last period's weekly sales.
+- **saveToStorage guard** — `saveToStorage()` is a no-op while viewing history, preventing live data from being overwritten by read-only state.
+
 ## [v5.22] — 2026-07-07
 ### Fixed
 - **Cost targets no longer overridden by previous period's localStorage** — on period transition, if the stored period name (e.g. "Period 7") differs from the HTML default (e.g. "Period 8"), cost targets now use the HTML defaults instead of the old stored values. Within the same period, targets still restore from storage as before.

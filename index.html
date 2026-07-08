@@ -185,6 +185,31 @@ input::-webkit-inner-spin-button { -webkit-appearance: none !important; margin: 
 input[type="number"],
 input[type="text"] { -moz-appearance: textfield !important; appearance: textfield !important; }
 
+/* ── PERIOD TAB BAR ── */
+.period-tabbar{position:fixed;bottom:0;left:0;right:0;height:36px;background:var(--surface);border-top:2px solid var(--divider);display:flex;align-items:stretch;overflow-x:auto;z-index:300;scrollbar-width:none;box-shadow:0 -2px 8px oklch(0.2 0.01 80/.06)}
+.period-tabbar::-webkit-scrollbar{display:none}
+.ptab{flex-shrink:0;padding:0 18px;display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-right:1px solid var(--divider);white-space:nowrap;user-select:none;transition:background .15s,color .15s}
+.ptab:hover:not(.ptab-active){background:var(--off);color:var(--text)}
+.ptab-active{background:var(--primary-hl);color:var(--primary);box-shadow:inset 0 2px 0 var(--primary)}
+.ptab-new{color:var(--primary);font-weight:700;margin-left:auto;border-left:1px solid var(--divider);border-right:none}
+.ptab-new:hover{background:var(--primary-hl)}
+.ptab-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);display:inline-block;flex-shrink:0}
+
+/* ── HISTORY BANNER ── */
+.view-banner{position:sticky;top:52px;z-index:190;background:var(--primary);color:#fff;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--xs);font-weight:600;box-shadow:0 2px 8px oklch(0.2 0.01 80/.15)}
+.view-banner-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:4px 14px;border-radius:var(--r-full);font-size:var(--xs);font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap;flex-shrink:0}
+.view-banner-btn:hover{background:rgba(255,255,255,.32)}
+
+/* ── READ-ONLY MODE (history view) ── */
+body.history-view .fin{pointer-events:none;opacity:.72}
+body.history-view .cell-in{pointer-events:none;opacity:.72}
+body.history-view .notes-area{pointer-events:none;opacity:.72}
+body.history-view .plan-input{pointer-events:none;opacity:.72}
+body.history-view .btn{pointer-events:none;opacity:.5}
+
+/* Bottom padding for tab bar */
+.main{padding-bottom:54px!important}
+
 </style>
 </head>
 <body>
@@ -217,6 +242,12 @@ input[type="text"] { -moz-appearance: textfield !important; appearance: textfiel
     </button>
   </div>
 </header>
+
+<!-- ── HISTORY VIEW BANNER ──────────────────────────────────── -->
+<div id="view-banner" style="display:none" class="view-banner">
+  <span id="view-banner-text">📋 Viewing archived period — Read Only</span>
+  <button class="view-banner-btn" onclick="returnToCurrent()">← Return to Current Period</button>
+</div>
 
 <main class="main">
 
@@ -1698,6 +1729,7 @@ function render(){
   renderProjection();
   renderPeriodClose();
   renderPeriodSummary();
+  renderTabs();
 }
 function setWeek(w){
   st.week=w;
@@ -1862,10 +1894,157 @@ function resetData(){
   });
 })();
 
+// ─── PERIOD ARCHIVE ────────────────────────────────────────────
+const ARCHIVE_KEY = 'fellowbar_archive_v1';
+let periodsArchive = [];   // completed periods only (pushed on "New Period")
+let viewingIdx    = null;  // null = live, number = index into periodsArchive
+let currentSnapshot = null; // live state saved before jumping to history
+
+function loadArchive(){
+  try{
+    const raw=localStorage.getItem(ARCHIVE_KEY);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(d&&Array.isArray(d.periods))periodsArchive=d.periods;
+  }catch(e){}
+}
+
+function saveArchive(){
+  try{ localStorage.setItem(ARCHIVE_KEY,JSON.stringify({version:1,periods:periodsArchive})); }catch(e){}
+}
+
+function captureCurrentPeriod(){
+  return{
+    name:$('pName').value||'Unnamed Period',
+    startDate:$('pStart').value||'',
+    savedAt:new Date().toISOString(),
+    setup:{
+      pName:$('pName').value,pStart:$('pStart').value,
+      begBeer:$('begBeer').value,begWine:$('begWine').value,
+      begLiquor:$('begLiquor').value,begConsumables:$('begConsumables').value,
+      begTotal:$('begTotal').value,
+      endBeer:$('endBeer').value,endWine:$('endWine').value,
+      endLiquor:$('endLiquor').value,endConsumables:$('endConsumables').value,
+      endTotal:$('endTotal').value,
+      costTarget:$('costTarget').value,tgtBeer:$('tgtBeer').value,
+      tgtWine:$('tgtWine').value,tgtLiquor:$('tgtLiquor').value,
+      tgtConsumables:$('tgtConsumables').value,
+      expWeeklySales:$('expWeeklySales').value,
+      ppW1:$('ppW1').value,ppW2:$('ppW2').value,
+      ppW3:$('ppW3').value,ppW4:$('ppW4').value,
+    },
+    weeks:JSON.parse(JSON.stringify(st))
+  };
+}
+
+function applyPeriodSnapshot(snap){
+  const s=snap.setup||{};
+  ['pName','pStart','begBeer','begWine','begLiquor','begConsumables','begTotal',
+   'endBeer','endWine','endLiquor','endConsumables','endTotal',
+   'costTarget','tgtBeer','tgtWine','tgtLiquor','tgtConsumables',
+   'expWeeklySales','ppW1','ppW2','ppW3','ppW4'
+  ].forEach(k=>{if($(k)&&s[k]!==undefined)$(k).value=s[k];});
+  if(snap.weeks)st=JSON.parse(JSON.stringify(snap.weeks));
+}
+
+function viewHistoricalPeriod(idx){
+  if(viewingIdx===null) currentSnapshot=captureCurrentPeriod();
+  viewingIdx=idx;
+  const snap=periodsArchive[idx];
+  applyPeriodSnapshot(snap);
+  st.week=1;
+  document.body.classList.add('history-view');
+  const banner=$('view-banner'),text=$('view-banner-text');
+  if(banner)banner.style.display='flex';
+  if(text){
+    const d=snap.startDate?` · ${snap.startDate}`:'';
+    text.textContent=`📋 Viewing ${snap.name}${d} — Read Only`;
+  }
+  render();
+}
+
+function returnToCurrent(){
+  if(currentSnapshot)applyPeriodSnapshot(currentSnapshot);
+  viewingIdx=null;currentSnapshot=null;
+  document.body.classList.remove('history-view');
+  const banner=$('view-banner');
+  if(banner)banner.style.display='none';
+  render();
+}
+
+function startNewPeriod(){
+  const curName=$('pName').value||'Current Period';
+  if(!confirm(`Archive "${curName}" and start a new period?\n\nEnding inventory carries forward as new beginning inventory. Weekly data will be cleared.`))return;
+
+  // Grab prior weekly sales for auto-fill
+  const ppSales=[1,2,3,4].map(w=>Math.round(SCATS.reduce((s,c)=>s+wSales(w,c),0)));
+
+  // Carry ending inventory forward
+  const newBeg={Beer:$('endBeer').value||'',Wine:$('endWine').value||'',
+    Liquor:$('endLiquor').value||'',Consumables:$('endConsumables').value||''};
+
+  // Archive current period
+  const snap=captureCurrentPeriod();
+  const ei=periodsArchive.findIndex(p=>p.name===snap.name);
+  if(ei>=0)periodsArchive[ei]=snap; else periodsArchive.push(snap);
+  saveArchive();
+
+  // Compute new period name + start date
+  const curNum=getPeriodNum();
+  const newNum=curNum?curNum+1:null;
+  const newName=newNum?`Period ${newNum}`:`${curName} (New)`;
+  const curStart=new Date($('pStart').value||Date.now());
+  const newStart=new Date(curStart);newStart.setDate(newStart.getDate()+28);
+  const newStartStr=newStart.toISOString().split('T')[0];
+
+  // Reset weekly state
+  st={week:1,p:{},s:{},notes:{},weekSales:{},weekCostPct:{},events:{}};
+  for(let w=1;w<=4;w++){st.p[w]={};st.s[w]={};st.notes[w]='';st.weekSales[w]=0;st.weekCostPct[w]=0;st.events[w]=0;}
+
+  // Apply new setup fields
+  $('pName').value=newName;$('pStart').value=newStartStr;
+  $('begBeer').value=newBeg.Beer;$('begWine').value=newBeg.Wine;
+  $('begLiquor').value=newBeg.Liquor;$('begConsumables').value=newBeg.Consumables;
+  $('begTotal').value='';
+  ['endBeer','endWine','endLiquor','endConsumables','endTotal'].forEach(k=>$(k).value='');
+
+  // Auto-fill Prior Period Reference
+  [1,2,3,4].forEach(w=>{$(`ppW${w}`).value=ppSales[w-1]>0?ppSales[w-1].toString():'';});
+
+  viewingIdx=null;currentSnapshot=null;
+  document.body.classList.remove('history-view');
+  const banner=$('view-banner');if(banner)banner.style.display='none';
+  saveToStorage();render();
+}
+
+function renderTabs(){
+  const el=$('period-tabbar');
+  if(!el)return;
+  // True current name — use snapshot if we're viewing history
+  const currentName=viewingIdx!==null&&currentSnapshot
+    ?currentSnapshot.name
+    :($('pName').value||'Current Period');
+
+  const archiveTabs=periodsArchive.map((p,i)=>{
+    const active=viewingIdx===i;
+    return `<div class="ptab${active?' ptab-active':''}" onclick="viewHistoricalPeriod(${i})" title="Archived ${p.startDate||p.name}">${p.name}</div>`;
+  }).join('');
+
+  const curActive=viewingIdx===null;
+  const curTab=`<div class="ptab${curActive?' ptab-active':''}" onclick="${curActive?'void 0':'returnToCurrent()'}" style="${curActive?'cursor:default':''}">
+    <span class="ptab-dot"></span>${currentName}<span style="font-size:9px;opacity:.6;margin-left:2px">CURRENT</span>
+  </div>`;
+
+  const newBtn=`<div class="ptab ptab-new" onclick="startNewPeriod()" title="Archive current period and begin next">＋ New Period</div>`;
+
+  el.innerHTML=archiveTabs+curTab+newBtn;
+}
+
 // ─── LOCAL STORAGE AUTO-SAVE ──────────────────────────────────
 const STORAGE_KEY = 'fellowbar_tracker_v5';
 
 function saveToStorage() {
+  if(viewingIdx!==null)return; // Never overwrite live data while viewing history
   try {
     const data = {
       version: 5,
@@ -1984,6 +2163,7 @@ window.resetData = function() {
 };
 
 // Load saved data on startup, then render
+loadArchive();
 const loaded = loadFromStorage();
 render();
 if (loaded) {
@@ -1997,5 +2177,9 @@ if (loaded) {
   }, 400);
 }
 </script>
+
+<!-- ── PERIOD TAB BAR ────────────────────────────────────────── -->
+<div id="period-tabbar" class="period-tabbar"></div>
+
 </body>
 </html>
