@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.30] — 2026-07-08
+### Changed
+- **Manager Game Plan Week 1 now surfaces ppW4** — when prior period Week 4 data exists, the opening week message now reads "Prior period Wk 4 (most recent week): $X,XXX in sales. Purchase to target: $XXX." instead of "no prior data to reference." Gives the manager a concrete sales anchor before placing their first order. Falls back to "No prior period data available" when ppW4 is blank.
+
 ## [v5.29] — 2026-07-08
 ### Changed
 - **Week 1 ordering reference now uses Prior Period Week 4** — the most recent completed week of the prior period is a better ordering signal for Week 1 than the same week last period (which was 5 weeks ago). Weeks 2–4 still reference their matching prior period week. Row label updated in the daily tracker to make this explicit. Added a note in Period Setup explaining the logic and that all ppW fields remain manually overridable.

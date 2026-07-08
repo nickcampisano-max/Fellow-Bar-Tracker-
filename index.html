@@ -580,7 +580,9 @@ function genWeekPlan(w){
     const wkOrd=(expWkS*mix[cat])*(catT/100);
 
     if(dataThru===0){
-      result[cat]=`Opening week — no prior data to reference. Purchase to target: ${fc(wkOrd)}.`;
+      const ppW4Val=gv('ppW4');
+      const ppRef=ppW4Val>0?`Prior period Wk 4 (most recent week): ${fc(ppW4Val)} in sales. `:'No prior period data available. ';
+      result[cat]=`Opening week — ${ppRef}Purchase to target: <strong>${fc(wkOrd)}</strong>.`;
       return;
     }
 
@@ -611,7 +613,9 @@ function genWeekPlan(w){
   // ── Consumables ───────────────────────────────────────────────
   const consTgt=catTgt('Consumables');
   if(dataThru===0){
-    result.Consumables=`Opening week — purchase to rhythm. Target: ${fp(consTgt)} of Liquor sales.`;
+    const ppW4C=gv('ppW4');
+    const ppRefC=ppW4C>0?`Prior period Wk 4 sales: ${fc(ppW4C)}. `:'';
+    result.Consumables=`Opening week — ${ppRefC}Purchase to rhythm. Target: ${fp(consTgt)} of Liquor sales.`;
   } else {
     const consP=periodPurch(dataThru,'Consumables');
     const liqS=periodSales(dataThru,'Liquor');
