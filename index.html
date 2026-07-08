@@ -398,7 +398,7 @@ for(let w=1;w<=4;w++){
 
 // ─── HELPERS ──────────────────────────────────────────────────
 const $=id=>document.getElementById(id);
-const parseNum=s=>{ if(!s&&s!==0)return NaN; const c=String(s).replace(/,/g,'').trim(); return parseFloat(c); };
+const parseNum=s=>{ if(!s&&s!==0)return NaN; const c=String(s).replace(/[$,]/g,'').trim(); return parseFloat(c); };
 const gv=id=>{ const v=parseNum($(id).value); return isNaN(v)?0:v; };
 const gvNull=id=>{ const raw=$(id).value.trim(); if(raw===''||raw===null)return null; const v=parseNum(raw); return isNaN(v)?null:v; };
 const fd=(v,d=2)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});

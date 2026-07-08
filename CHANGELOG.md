@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.21] — 2026-07-07
+### Fixed
+- **`parseNum` now strips dollar signs** — values pasted from MarginEdge with a `$` prefix (e.g. `$649.72`) were silently returning `NaN`, causing all inventory fields to read as $0. Added `$` to the strip pattern alongside commas.
+
 ## [v5.20] — 2026-07-07
 ### Fixed
 - **Beginning and ending inventory auto-totals not showing** — moved the auto-total calculation to the top of `render()` so it fires immediately on any input, before the rest of the render chain runs. Also added Consumables to the ending inventory auto-total. Previously these updates lived inside `renderKPIs()` and could fail silently if anything earlier in that function stalled.
