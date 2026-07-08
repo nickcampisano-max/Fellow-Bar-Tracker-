@@ -420,6 +420,9 @@ body.history-view.editing-history .plan-input{pointer-events:auto!important;opac
 
 </main>
 
+<!-- ── PERIOD TAB BAR ────────────────────────────────────────── -->
+<div id="period-tabbar" class="period-tabbar"></div>
+
 <script>
 // ─── STATE ────────────────────────────────────────────────────
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -2322,8 +2325,6 @@ loadArchive();
 seedArchive();
 const loaded = loadFromStorage();
 render();
-// Period tab bar div sits after this script tag, so re-render once DOM is fully parsed
-window.addEventListener('load', render);
 if (loaded) {
   // Show subtle toast that data was restored
   setTimeout(() => {
@@ -2335,9 +2336,6 @@ if (loaded) {
   }, 400);
 }
 </script>
-
-<!-- ── PERIOD TAB BAR ────────────────────────────────────────── -->
-<div id="period-tabbar" class="period-tabbar"></div>
 
 </body>
 </html>
