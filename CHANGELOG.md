@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.29] — 2026-07-08
+### Changed
+- **Week 1 ordering reference now uses Prior Period Week 4** — the most recent completed week of the prior period is a better ordering signal for Week 1 than the same week last period (which was 5 weeks ago). Weeks 2–4 still reference their matching prior period week. Row label updated in the daily tracker to make this explicit. Added a note in Period Setup explaining the logic and that all ppW fields remain manually overridable.
+
 ## [v5.28] — 2026-07-08
 ### Fixed
 - **Period tabs now appear on first page load** — moved `<div id="period-tabbar">` from after the `</script>` tag to before it, so the element exists in the DOM when `render()` runs on startup. Previously `renderTabs()` silently exited early because the div hadn't been parsed yet, resulting in a visible but empty tab strip. Removed the now-unnecessary `window.addEventListener('load', render)` workaround.

@@ -369,6 +369,7 @@ body.history-view.editing-history .plan-input{pointer-events:auto!important;opac
     </div>
 
     <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Prior Period Reference — Weekly Sales (for trend comparison in daily tracker)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Auto-filled when rolling to a new period. Wk 4 is used as the Week 1 ordering reference (most recent data). Override any value manually.</div>
     <div class="setup-grid" style="margin-top:8px">
       <div class="field">
         <label class="flbl">Prior Period Week 1</label>
@@ -383,7 +384,7 @@ body.history-view.editing-history .plan-input{pointer-events:auto!important;opac
         <div class="dollar"><input class="fin" id="ppW3" type="text" inputmode="decimal" placeholder="e.g. 8200" oninput="render()"></div>
       </div>
       <div class="field">
-        <label class="flbl">Prior Period Week 4</label>
+        <label class="flbl">Prior Period Week 4 ↩ Wk 1 ref</label>
         <div class="dollar"><input class="fin" id="ppW4" type="text" inputmode="decimal" placeholder="e.g. 7800" oninput="render()"></div>
       </div>
     </div>
@@ -849,14 +850,16 @@ function renderWeek(w){
       <td style="text-align:right;color:var(--muted);font-size:11px;font-weight:600">${pwTot>0?fc(pwTot):'—'}</td></tr>`;
   }
 
-  // Prior period average (from Period Setup inputs)
+  // Prior period average — Week 1 uses ppW4 (most recent week) as ordering reference
   let priorPeriodRow='';
-  const ppW=gv(`ppW${w}`);
+  const ppWKey = w===1 ? 'ppW4' : `ppW${w}`;
+  const ppWLabel = w===1 ? 'Prior Pd Wk 4 Avg/day ↩ ordering ref' : `Prior Pd Wk ${w} Avg/day`;
+  const ppW=gv(ppWKey);
   if(ppW>0){
     const ppAvg=ppW/7;
     const ppCells=Array(7).fill(0).map(()=>`<td style="text-align:right;color:var(--muted);font-size:11px">${fc(ppAvg)}</td>`).join('');
     priorPeriodRow=`<tr style="background:var(--off)">
-      <td style="padding-left:10px;color:var(--muted);font-size:11px;font-style:italic">↑ Prior Period Avg/day</td>
+      <td style="padding-left:10px;color:var(--muted);font-size:11px;font-style:italic">↑ ${ppWLabel}</td>
       ${ppCells}
       <td style="text-align:right;color:var(--muted);font-size:11px;font-weight:600">${fc(ppW)}</td></tr>`;
   }
