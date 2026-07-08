@@ -354,7 +354,7 @@ body.history-view.editing-history .plan-input{pointer-events:auto!important;opac
       </div>
       <div class="field">
         <label class="flbl">Liquor Target</label>
-        <div class="pct"><input class="fin" id="tgtLiquor" type="text" inputmode="decimal" value="14" oninput="render()"></div>
+        <div class="pct"><input class="fin" id="tgtLiquor" type="text" inputmode="decimal" value="15" oninput="render()"></div>
       </div>
       <div class="field">
         <label class="flbl">Consumables Target</label>
@@ -2212,8 +2212,73 @@ window.resetData = function() {
 // ─── SEED HISTORICAL PERIODS ──────────────────────────────────
 // P6 and P7 are baked in — injected into archive on first load if missing.
 const SEED_PERIODS=[
+  {name:'Period 1',startDate:'2025-12-22',savedAt:'2026-01-19T00:00:00.000Z',
+   setup:{pName:'Period 1',pStart:'2025-12-22',begBeer:'728.07',begWine:'2818.70',begLiquor:'5721.55',begConsumables:'',begTotal:'',endBeer:'737.77',endWine:'3101.13',endLiquor:'5956.90',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'8060',ppW1:'',ppW2:'',ppW3:'',ppW4:''},
+   weeks:{week:4,
+     p:{1:{Beer:[0,0,0,0,438,0,0],Wine:[0,504.23,0,0,0,0,0],Liquor:[0,408.75,408.54,0,0,0,0],Consumables:[0,0,0,0,0,0,225.07]},
+        2:{Beer:[0,0,0,0,211.5,0,0],Wine:[683.82,0,0,0,0,0,0],Liquor:[377.1,316.5,0,0,0,0,0],Consumables:[0,0,0,0,0,0,184.68]},
+        3:{Beer:[0,0,0,0,0,0,0],Wine:[0,651.36,328.38,0,0,0,0],Liquor:[0,43,950.7,0,0,0,0],Consumables:[0,0,0,0,0,0,364.2]},
+        4:{Beer:[0,0,170,0,0,0,0],Wine:[0,0,394.76,0,269.4,0,0],Liquor:[0,0,355.98,474.84,0,0,0],Consumables:[218.1,0,0,0,0,0,0]}},
+     s:{1:{Beer:[24,68,18,0,86,90,68],Wine:[515,552,179,0,357,510,503],Liquor:[665.5,723.5,478,0,841,582,575]},
+        2:{Beer:[106,122,120,46,62,60,42],Wine:[403,476,607,292,270,370,75],Liquor:[596.5,1269,1875.5,269,525,1052,26]},
+        3:{Beer:[66,102,18,120,108,82,36],Wine:[296,263,365,421,447,318,358],Liquor:[241.51,820,530,675,1211,602,650]},
+        4:{Beer:[18,134,60,132,134,54,36],Wine:[219,304,388,438,311,382,1071],Liquor:[330.5,718.5,686,834.5,1073,1107,579]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}},
+
+  {name:'Period 2',startDate:'2026-01-19',savedAt:'2026-02-16T00:00:00.000Z',
+   setup:{pName:'Period 2',pStart:'2026-01-19',begBeer:'737.77',begWine:'3101.13',begLiquor:'5956.90',begConsumables:'',begTotal:'',endBeer:'683.80',endWine:'3109.57',endLiquor:'5785.16',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'10895',ppW1:'6835',ppW2:'8664',ppW3:'7730',ppW4:'9010'},
+   weeks:{week:4,
+     p:{1:{Beer:[0,0,0,0,360,0,0],Wine:[0,0,558.47,107.92,6.6,0,0],Liquor:[0,299.55,441.49,0,0,0,0],Consumables:[0,0,0,0,0,0,256.88]},
+        2:{Beer:[0,0,69,0,0,0,0],Wine:[0,0,538.14,0,0,0,0],Liquor:[0,73,786.61,0,0,0,0],Consumables:[0,0,0,0,0,0,288.64]},
+        3:{Beer:[0,0,0,0,798,0,0],Wine:[137.88,552.4,377.88,0,0,0,0],Liquor:[0,294.17,564.88,0,0,0,0],Consumables:[0,0,0,0,0,0,313.39]},
+        4:{Beer:[0,179,0,0,0,0,0],Wine:[0,455.16,391.2,0,0,0,0],Liquor:[0,95.75,884.46,0,0,0,0],Consumables:[0,0,0,0,0,0,294.23]}},
+     s:{1:{Beer:[42,72,216,182,226,76,66],Wine:[95,335,598,651,774,291,320],Liquor:[464.5,552,1206.5,773,1634,724,409]},
+        2:{Beer:[54,48,76,134,218,178,138],Wine:[270,724,447,423,699,587,770],Liquor:[494,589,615,585,1368,855,544]},
+        3:{Beer:[24,132,114,112,158,136,30],Wine:[105,323,854,349,672,773,156],Liquor:[2759,1057,964,750,1263,892,212]},
+        4:{Beer:[42,112,252,124,220,190,112],Wine:[382,728,620,328,521,572,607],Liquor:[362,681.75,738,726.5,1870.5,1857,1176]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}},
+
+  {name:'Period 3',startDate:'2026-02-16',savedAt:'2026-03-16T00:00:00.000Z',
+   setup:{pName:'Period 3',pStart:'2026-02-16',begBeer:'683.80',begWine:'3109.57',begLiquor:'5785.16',begConsumables:'',begTotal:'',endBeer:'886.96',endWine:'3439.18',endLiquor:'5478.36',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'12348',ppW1:'9707',ppW2:'9816',ppW3:'11835',ppW4:'12222'},
+   weeks:{week:4,
+     p:{1:{Beer:[0,195,0,0,0,0,0],Wine:[143.88,293.76,143.88,0,0,0,0],Liquor:[0,297,848.04,0,0,0,0],Consumables:[0,0,0,0,0,0,329.86]},
+        2:{Beer:[0,0,0,0,129,0,0],Wine:[0,264,308.87,0,634.38,74.94,0],Liquor:[0,0,691.53,0,119.1,0,0],Consumables:[0,0,0,0,0,0,499.88]},
+        3:{Beer:[0,0,0,0,367.5,0,0],Wine:[0,275.76,777.2,0,0,0,0],Liquor:[0,247.74,1056.57,0,0,0,0],Consumables:[0,0,0,0,0,0,83.25]},
+        4:{Beer:[0,324,0,0,0,0,0],Wine:[0,545.16,980.64,0,0,0,0],Liquor:[0,61.75,573.95,0,0,0,0],Consumables:[0,0,0,0,0,0,326.91]}},
+     s:{1:{Beer:[70,178,104,130,220,142,50],Wine:[393,463,534,401,692,750,741],Liquor:[719,1074.5,1210,802,1629,1712,640]},
+        2:{Beer:[176,202,96,166,242,176,52],Wine:[853,569,459,474,837,776,377],Liquor:[763,1080.5,1740,895,1421,1341.5,723]},
+        3:{Beer:[42,146,66,86,168,182,146],Wine:[590,593,438,471,748,701,448],Liquor:[490,794,1149,726,1932.5,1602,937]},
+        4:{Beer:[76,172,134,38,220,168,106],Wine:[330,472,867,169,507,363,517],Liquor:[626,852.5,839.25,765.5,1457,1096,1088.5]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}},
+
+  {name:'Period 4',startDate:'2026-03-16',savedAt:'2026-04-13T00:00:00.000Z',
+   setup:{pName:'Period 4',pStart:'2026-03-16',begBeer:'886.96',begWine:'3439.18',begLiquor:'5478.36',begConsumables:'',begTotal:'',endBeer:'1132.53',endWine:'2788.96',endLiquor:'6152.71',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'9910',ppW1:'12654',ppW2:'13419',ppW3:'12456',ppW4:'10864'},
+   weeks:{week:4,
+     p:{1:{Beer:[165,0,0,0,340,0,0],Wine:[137.88,327.25,0,0,0,0,0],Liquor:[291.94,753.67,0,0,0,0,0],Consumables:[0,0,0,0,0,0,299.98]},
+        2:{Beer:[0,0,0,0,0,0,0],Wine:[0,252,269.93,0,0,0,0],Liquor:[0,0,882.09,0,0,0,0],Consumables:[0,0,0,0,0,0,301.6]},
+        3:{Beer:[0,0,0,0,257,0,0],Wine:[0,611.04,476.88,0,0,0,0],Liquor:[0,622.14,215.05,0,0,0,0],Consumables:[0,0,0,0,0,0,191.44]},
+        4:{Beer:[0,200,0,0,0,0,0],Wine:[0,275.76,515.88,0,620,0,0],Liquor:[0,0,790.69,0,0,0,0],Consumables:[0,0,0,0,0,0,333.13]}},
+     s:{1:{Beer:[70,108,174,116,160,64,128],Wine:[355,157,336,406,588,27,580],Liquor:[497.01,865,827,686,2224,742,737]},
+        2:{Beer:[46,130,114,122,102,76,30],Wine:[423,355,482,441,473,464,967],Liquor:[627.5,793,692.5,976.5,1321,955,809]},
+        3:{Beer:[12,82,164,96,180,154,54],Wine:[659,246,377,422,768,272,448],Liquor:[472,562,804,720.5,1204,873,473]},
+        4:{Beer:[54,56,76,140,242,170,150],Wine:[448,395,431,332,910,369,512],Liquor:[473,481,801,1222.5,1704,686.5,699]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}},
+
+  {name:'Period 5',startDate:'2026-04-13',savedAt:'2026-05-11T00:00:00.000Z',
+   setup:{pName:'Period 5',pStart:'2026-04-13',begBeer:'1132.53',begWine:'2788.96',begLiquor:'6152.71',begConsumables:'',begTotal:'',endBeer:'775.71',endWine:'2669.22',endLiquor:'5296.51',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'11186',ppW1:'9847',ppW2:'10400',ppW3:'9042',ppW4:'10352'},
+   weeks:{week:4,
+     p:{1:{Beer:[0,0,0,0,0,0,0],Wine:[0,315.8,90,0,0,0,0],Liquor:[0,171.58,500.26,0,0,0,0],Consumables:[0,0,0,0,0,0,214.58]},
+        2:{Beer:[0,135,0,0,0,0,0],Wine:[0,695.28,473.76,0,0,0,0],Liquor:[0,0,1053.12,0,0,0,0],Consumables:[0,0,0,0,0,0,404.33]},
+        3:{Beer:[0,0,0,0,280,0,0],Wine:[0,0,1076.3,0,0,0,0],Liquor:[0,0,278.31,107.07,389.58,0,0],Consumables:[0,0,0,0,0,0,138.22]},
+        4:{Beer:[0,75.6,0,0,0,0,0],Wine:[0,423.24,143.88,0,0,0,0],Liquor:[0,63,622.89,0,0,0,0],Consumables:[0,0,0,0,0,0,150.49]}},
+     s:{1:{Beer:[56,28,214,78,154,200,118],Wine:[226,591,569,430,790,730,563],Liquor:[641,686,1203,874.5,1745,1349.5,699]},
+        2:{Beer:[114,116,176,158,188,92,92],Wine:[273,443,596,1334,451,495,475],Liquor:[586,678,827.5,1058.5,1110.5,1178,754]},
+        3:{Beer:[68,144,64,84,102,92,102],Wine:[151,633,406,425,457,568,509],Liquor:[328.5,1018,599,516.5,1424,1110,442]},
+        4:{Beer:[60,74,228,68,298,180,144],Wine:[274,327,705,467,730,346,1045],Liquor:[624,448,1838.5,758,2014,899,832]}},
+     notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}},
+
   {name:'Period 6',startDate:'2026-05-11',savedAt:'2026-06-09T00:00:00.000Z',
-   setup:{pName:'Period 6',pStart:'2026-05-11',begBeer:'775.71',begWine:'2669.22',begLiquor:'5296.51',begConsumables:'',begTotal:'',endBeer:'1007.53',endWine:'2869.13',endLiquor:'4696.00',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'9000',ppW1:'',ppW2:'',ppW3:'',ppW4:''},
+   setup:{pName:'Period 6',pStart:'2026-05-11',begBeer:'775.71',begWine:'2669.22',begLiquor:'5296.51',begConsumables:'',begTotal:'',endBeer:'1007.53',endWine:'2869.13',endLiquor:'4696.00',endConsumables:'',endTotal:'',costTarget:'21.5',tgtBeer:'25',tgtWine:'33',tgtLiquor:'20',tgtConsumables:'3',expWeeklySales:'9000',ppW1:'9847',ppW2:'10400',ppW3:'9042',ppW4:'10352'},
    weeks:{week:4,
      p:{1:{Beer:[0,195,0,0,99,0,0],Wine:[0,317.88,604.64,0,0,0,0],Liquor:[0,308.09,759.25,0,0,0,0],Consumables:[0,0,0,0,0,0,336.71]},
         2:{Beer:[0,170,0,0,305,0,0],Wine:[0,407.28,233.88,0,0,0,0],Liquor:[0,0,196.48,453,0,0,0],Consumables:[0,0,0,0,0,0,124.25]},
@@ -2237,7 +2302,7 @@ const SEED_PERIODS=[
         3:{Beer:[74,155,73,140,145,130,30],Wine:[199,255,47,512,417,337,328],Liquor:[388,544,522,669,1371,1212,662]},
         4:{Beer:[111,67,124,11,102,0,30],Wine:[175,294,83,266,126,0,328],Liquor:[469,339,379,957,594,0,662]}},
      notes:{1:'',2:'',3:'',4:''},weekSales:{1:0,2:0,3:0,4:0},weekCostPct:{1:0,2:0,3:0,4:0},events:{1:0,2:0,3:0,4:0}}}
-];
+]
 
 function seedArchive(){
   let changed=false;

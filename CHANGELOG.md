@@ -4,9 +4,17 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.27] — 2026-07-08
+### Fixed
+- **Liquor cost target corrected to 15%** — HTML default was set to 14% in v5.19; corrected to match actual Period 8 target.
+
+## [v5.26] — 2026-07-08
+### Added
+- **Periods 1–5 baked into the app** — full daily purchase and sales data extracted from `FO Bar Purschase Tracker 2026.xlsx` and seeded as JS objects. All 7 periods (P1–P7) now appear in the tab bar on first load via `seedArchive()`. For P1–P5, Consumables inventory is blank (Shamrock/Mutual was blended into Liquor in the old tracker; purchase amounts are recorded in the Consumables row). Beginning and ending inventory chains correctly across all periods (P1 beg → P7 end). Prior period weekly sales references (ppW1–ppW4) populated for P2–P7 so the reference row in each period's tracker reflects the previous period's actuals. Period 6 ppW fields updated to use P5's actual weekly totals.
+
 ## [v5.25] — 2026-07-07
 ### Added
-- **Period 6 and Period 7 baked into the app** — full daily purchase and sales data seeded directly in the JS. On first load, `seedArchive()` checks if P6/P7 are missing from the archive and injects them automatically. No console script needed. Periods 1–5 will be added the same way once screenshot data is received.
+- **Period 6 and Period 7 baked into the app** — full daily purchase and sales data seeded directly in the JS. On first load, `seedArchive()` checks if P6/P7 are missing from the archive and injects them automatically. No console script needed.
 
 ## [v5.24] — 2026-07-07
 ### Added
