@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.22] — 2026-07-07
+### Fixed
+- **Cost targets no longer overridden by previous period's localStorage** — on period transition, if the stored period name (e.g. "Period 7") differs from the HTML default (e.g. "Period 8"), cost targets now use the HTML defaults instead of the old stored values. Within the same period, targets still restore from storage as before.
+
 ## [v5.21] — 2026-07-07
 ### Fixed
 - **`parseNum` now strips dollar signs** — values pasted from MarginEdge with a `$` prefix (e.g. `$649.72`) were silently returning `NaN`, causing all inventory fields to read as $0. Added `$` to the strip pattern alongside commas.

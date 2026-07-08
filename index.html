@@ -1909,6 +1909,8 @@ function loadFromStorage() {
 
     // Restore setup fields
     const s = data.setup;
+    // Capture HTML defaults for period name before restoring
+    const htmlPeriodName = $('pName').value;
     if (s.pName) $('pName').value = s.pName;
     if (s.pStart) $('pStart').value = s.pStart;
     if (s.begBeer) $('begBeer').value = s.begBeer;
@@ -1921,11 +1923,16 @@ function loadFromStorage() {
     if (s.endLiquor) $('endLiquor').value = s.endLiquor;
     if (s.endConsumables) $('endConsumables').value = s.endConsumables;
     if (s.endTotal) $('endTotal').value = s.endTotal;
-    if (s.costTarget) $('costTarget').value = s.costTarget;
-    if (s.tgtBeer) $('tgtBeer').value = s.tgtBeer;
-    if (s.tgtWine) $('tgtWine').value = s.tgtWine;
-    if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
-    if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
+    // Only restore cost targets if this is the same period — otherwise use HTML defaults
+    // This prevents Period 7 targets from overriding Period 8 defaults on transition
+    const samePeriod = s.pName === htmlPeriodName;
+    if (samePeriod) {
+      if (s.costTarget) $('costTarget').value = s.costTarget;
+      if (s.tgtBeer) $('tgtBeer').value = s.tgtBeer;
+      if (s.tgtWine) $('tgtWine').value = s.tgtWine;
+      if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
+      if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
+    }
     if (s.expWeeklySales) $('expWeeklySales').value = s.expWeeklySales;
     if (s.ppW1) $('ppW1').value = s.ppW1;
     if (s.ppW2) $('ppW2').value = s.ppW2;
