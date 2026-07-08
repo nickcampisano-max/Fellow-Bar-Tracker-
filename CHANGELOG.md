@@ -4,6 +4,10 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.24] — 2026-07-07
+### Added
+- **Edit mode for archived periods** — while viewing a historical period, an "✏️ Edit" button appears in the banner. Clicking it unlocks all inputs (banner turns orange) so corrections can be made. "✓ Save Changes" writes the edits back to the archive. "✕ Discard" reverts all changes to the original snapshot. Switching periods while editing automatically discards unsaved changes.
+
 ## [v5.23] — 2026-07-07
 ### Added
 - **Period Tab Bar** — Excel-style tab bar fixed at the bottom of the screen. One tab per period, scrollable as history grows. Active current period shown with a teal dot and "CURRENT" label.

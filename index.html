@@ -206,6 +206,12 @@ body.history-view .cell-in{pointer-events:none;opacity:.72}
 body.history-view .notes-area{pointer-events:none;opacity:.72}
 body.history-view .plan-input{pointer-events:none;opacity:.72}
 body.history-view .btn{pointer-events:none;opacity:.5}
+/* ── EDIT MODE (unlocks inputs in history view) ── */
+body.history-view.editing-history .fin{pointer-events:auto!important;opacity:1!important}
+body.history-view.editing-history .cell-in{pointer-events:auto!important;opacity:1!important}
+body.history-view.editing-history .notes-area{pointer-events:auto!important;opacity:1!important}
+body.history-view.editing-history .plan-input{pointer-events:auto!important;opacity:1!important}
+.view-banner.editing{background:var(--warn)}
 
 /* Bottom padding for tab bar */
 .main{padding-bottom:54px!important}
@@ -246,7 +252,7 @@ body.history-view .btn{pointer-events:none;opacity:.5}
 <!-- ── HISTORY VIEW BANNER ──────────────────────────────────── -->
 <div id="view-banner" style="display:none" class="view-banner">
   <span id="view-banner-text">📋 Viewing archived period — Read Only</span>
-  <button class="view-banner-btn" onclick="returnToCurrent()">← Return to Current Period</button>
+  <div id="banner-actions" style="display:flex;gap:8px;align-items:center;flex-shrink:0"></div>
 </div>
 
 <main class="main">
@@ -1947,28 +1953,69 @@ function applyPeriodSnapshot(snap){
   if(snap.weeks)st=JSON.parse(JSON.stringify(snap.weeks));
 }
 
+let editingSnapshot=null; // original snapshot saved before edit (for discard)
+
+function _bannerReadOnly(snap){
+  const banner=$('view-banner'),text=$('view-banner-text'),acts=$('banner-actions');
+  if(!banner)return;
+  banner.style.display='flex';
+  banner.classList.remove('editing');
+  if(text){const d=snap.startDate?` · ${snap.startDate}`:'';text.textContent=`📋 Viewing ${snap.name}${d} — Read Only`;}
+  if(acts)acts.innerHTML=`
+    <button class="view-banner-btn" onclick="enableHistoryEdit()" style="background:rgba(255,255,255,.15)">✏️ Edit</button>
+    <button class="view-banner-btn" onclick="returnToCurrent()">← Return to Current</button>`;
+}
+
 function viewHistoricalPeriod(idx){
   if(viewingIdx===null) currentSnapshot=captureCurrentPeriod();
+  // If was editing another period, discard edits first
+  document.body.classList.remove('editing-history');
+  editingSnapshot=null;
   viewingIdx=idx;
   const snap=periodsArchive[idx];
   applyPeriodSnapshot(snap);
   st.week=1;
   document.body.classList.add('history-view');
-  const banner=$('view-banner'),text=$('view-banner-text');
-  if(banner)banner.style.display='flex';
-  if(text){
-    const d=snap.startDate?` · ${snap.startDate}`:'';
-    text.textContent=`📋 Viewing ${snap.name}${d} — Read Only`;
-  }
+  _bannerReadOnly(snap);
   render();
 }
 
 function returnToCurrent(){
   if(currentSnapshot)applyPeriodSnapshot(currentSnapshot);
-  viewingIdx=null;currentSnapshot=null;
-  document.body.classList.remove('history-view');
+  viewingIdx=null;currentSnapshot=null;editingSnapshot=null;
+  document.body.classList.remove('history-view','editing-history');
   const banner=$('view-banner');
   if(banner)banner.style.display='none';
+  render();
+}
+
+function enableHistoryEdit(){
+  editingSnapshot=captureCurrentPeriod(); // save for discard
+  document.body.classList.add('editing-history');
+  const banner=$('view-banner'),text=$('view-banner-text'),acts=$('banner-actions');
+  if(banner)banner.classList.add('editing');
+  const snap=periodsArchive[viewingIdx];
+  if(text)text.textContent=`✏️ Editing ${snap.name} — unsaved changes`;
+  if(acts)acts.innerHTML=`
+    <button class="view-banner-btn" onclick="saveHistoryEdit()" style="background:rgba(255,255,255,.25);font-weight:800">✓ Save Changes</button>
+    <button class="view-banner-btn" onclick="discardHistoryEdit()">✕ Discard</button>
+    <button class="view-banner-btn" onclick="returnToCurrent()" style="opacity:.65">← Return to Current</button>`;
+}
+
+function saveHistoryEdit(){
+  const snap=captureCurrentPeriod();
+  periodsArchive[viewingIdx]=snap;
+  saveArchive();
+  editingSnapshot=null;
+  document.body.classList.remove('editing-history');
+  _bannerReadOnly(snap);
+}
+
+function discardHistoryEdit(){
+  if(editingSnapshot)applyPeriodSnapshot(editingSnapshot);
+  editingSnapshot=null;
+  document.body.classList.remove('editing-history');
+  _bannerReadOnly(periodsArchive[viewingIdx]);
   render();
 }
 
