@@ -368,6 +368,28 @@ body.history-view.editing-history .plan-input{pointer-events:auto!important;opac
       </div>
     </div>
 
+    <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Expected Pour Rates — Forecast Only (not goals)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">What each category <em>actually</em> pours, from recent closed periods. Used only to estimate inventory and size weekly orders. The Cost Targets above stay the goals. Leave blank to fall back to the target.</div>
+    <div class="setup-grid" style="margin-top:8px">
+      <div class="field">
+        <label class="flbl">Beer Expected</label>
+        <div class="pct"><input class="fin" id="expRateBeer" type="text" inputmode="decimal" value="34.93" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Wine Expected</label>
+        <div class="pct"><input class="fin" id="expRateWine" type="text" inputmode="decimal" value="23.50" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Liquor Expected</label>
+        <div class="pct"><input class="fin" id="expRateLiquor" type="text" inputmode="decimal" value="13.56" oninput="render()"></div>
+      </div>
+      <div class="field">
+        <label class="flbl">Consumables Expected</label>
+        <div class="pct"><input class="fin" id="expRateConsumables" type="text" inputmode="decimal" value="4.23" oninput="render()"></div>
+        <div class="field-note">vs Liquor sales</div>
+      </div>
+    </div>
+
     <div style="margin-top:14px;margin-bottom:4px" class="sec-div">Prior Period Reference — Weekly Sales (for trend comparison in daily tracker)</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Auto-filled when rolling to a new period. Wk 4 is used as the Week 1 ordering reference (most recent data). Override any value manually.</div>
     <div class="setup-grid" style="margin-top:8px">
@@ -476,6 +498,13 @@ function weeksEntered(){let n=0;for(let w=1;w<=4;w++)if(hasData(w))n=w;return n;
 function catTgt(cat){
   return cat==='Beer'?gv('tgtBeer'):cat==='Wine'?gv('tgtWine'):cat==='Consumables'?gv('tgtConsumables'):gv('tgtLiquor');
 }
+// Expected pour rate — forecast input for inventory estimates and order sizing.
+// Falls back to the goal target when blank, so behaviour is unchanged if unset.
+function catExp(cat){
+  const id = cat==='Beer'?'expRateBeer':cat==='Wine'?'expRateWine':cat==='Consumables'?'expRateConsumables':'expRateLiquor';
+  const v = gv(id);
+  return (v && v > 0) ? v : catTgt(cat);
+}
 // Beginning inventory
 function begInv(cat){
   return cat==='Beer'?gv('begBeer'):cat==='Wine'?gv('begWine'):cat==='Consumables'?gv('begConsumables'):gv('begLiquor');
@@ -510,7 +539,7 @@ function catCalc(cat, thru){
     const beg = gv('begConsumables');
     const physPurch = periodPurch(thru, 'Consumables');
     const liqSales = periodSales(thru, 'Liquor'); // depletion proxy
-    const tgt = catTgt('Consumables') / 100;
+    const tgt = catExp('Consumables') / 100;
     const estEnding = Math.max(0, beg + physPurch - (liqSales * tgt));
     const actualEnding = gvNull('endConsumables');
     const endingUsed = (actualEnding !== null) ? actualEnding : estEnding;
@@ -528,7 +557,7 @@ function catCalc(cat, thru){
   const physPurch = periodPurch(thru, cat);
   const costPurch = physPurch;
   const sales = periodSales(thru, cat);
-  const tgt = catTgt(cat) / 100;
+  const tgt = catExp(cat) / 100;
 
   // Estimated ending inventory:
   // inventory decreases at cost %, not at revenue
@@ -576,7 +605,7 @@ function genWeekPlan(w){
 
   // ── Beer / Wine / Liquor ──────────────────────────────────────
   SCATS.forEach(cat=>{
-    const catT=catTgt(cat);
+    const catT=catExp(cat);
     const wkOrd=(expWkS*mix[cat])*(catT/100);
 
     if(dataThru===0){
@@ -679,7 +708,7 @@ function genWeekStatus(w){
     // Beer / Wine / Liquor
     const ordered=wPurch(w,cat);
     const sold=wSales(w,cat);
-    const catT=catTgt(cat);
+    const catT=catExp(cat);
     const wkCatSalesTarget=expWkS*mix[cat];
     const wkOrdTarget=wkCatSalesTarget*(catT/100);
     const ordRem=Math.max(0,wkOrdTarget-ordered);
@@ -1089,7 +1118,7 @@ function renderProjection(){
     if(week1InProgress){
       const expS=gv('expWeeklySales')||8000;
       curAvgS=expS*(salesMix[cat]||0.33);
-      curAvgP=curAvgS*(catTgt(cat)/100);
+      curAvgP=curAvgS*(catExp(cat)/100);
     } else {
       // Subtract event sales proportionally per week
       let adjS=0;
@@ -1106,7 +1135,7 @@ function renderProjection(){
     }
     if(velWks===1&&lyData&&!week1InProgress){
       const lyAvgS=lyData[cat]/4;
-      const lyAvgP=lyAvgS*(catTgt(cat)/100);
+      const lyAvgP=lyAvgS*(catExp(cat)/100);
       vel[cat]={avgS:curAvgS*0.5+lyAvgS*0.5,avgP:curAvgP*0.5+lyAvgP*0.5,blended:true};
     } else {
       vel[cat]={avgS:curAvgS,avgP:curAvgP,blended:false};
@@ -1124,7 +1153,7 @@ function renderProjection(){
   const totalPurchBudget=(tgt/100)*totalPeriodSales;
   const remainingBudget=Math.max(0,totalPurchBudget-totalActCostPurch);
   const perWeekBudget=weeksLeft>0?remainingBudget/weeksLeft:0;
-  const catWeightTotal=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*vel[c].avgS*weeksLeft,0);
+  const catWeightTotal=SCATS.reduce((s,c)=>s+(catExp(c)/100)*vel[c].avgS*weeksLeft,0);
 
   const cats={};
   SCATS.forEach(cat=>{
@@ -1134,10 +1163,10 @@ function renderProjection(){
     const drift=curInv-beg;
     const projSalesTotal=vel[cat].avgS*weeksLeft;
     const projSalesPW=vel[cat].avgS;
-    const catWt=catWeightTotal>0?(catTgt(cat)/100)*projSalesTotal/catWeightTotal:0;
+    const catWt=catWeightTotal>0?(catExp(cat)/100)*projSalesTotal/catWeightTotal:0;
     const projPurchPW=perWeekBudget*catWt;
     const projPurchTotal=projPurchPW*weeksLeft;
-    const projEnding=curInv+projPurchTotal-(projSalesTotal*(catTgt(cat)/100));
+    const projEnding=curInv+projPurchTotal-(projSalesTotal*(catExp(cat)/100));
     cats[cat]={beg,curInv,drift,projPurchPW,projSalesPW,projEnding,
       velocity:vel[cat],weeksIn:velWks,weeksLeft,isEstInv:r.isEstimated};
   });
@@ -1187,10 +1216,10 @@ function renderProjection(){
   const remainingBudgetExp=Math.max(0,totalPurchBudgetExp-totalActCostPurch);
   const perWeekBudgetExp=weeksLeft>0?remainingBudgetExp/weeksLeft:0;
   // Per-category order targets weighted by expected sales × catTgt
-  const catWeightTotalExp=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*expCatS[c]*weeksLeft,0);
+  const catWeightTotalExp=SCATS.reduce((s,c)=>s+(catExp(c)/100)*expCatS[c]*weeksLeft,0);
   const expCatP={};
   SCATS.forEach(cat=>{
-    const catWt=catWeightTotalExp>0?(catTgt(cat)/100)*expCatS[cat]*weeksLeft/catWeightTotalExp:0;
+    const catWt=catWeightTotalExp>0?(catExp(cat)/100)*expCatS[cat]*weeksLeft/catWeightTotalExp:0;
     expCatP[cat]=perWeekBudgetExp*catWt;
   });
 
@@ -1249,10 +1278,10 @@ function renderProjection(){
     const wkOrderTot=wkSalesEst*(wkPct/100);
     // Distribute by category using velocity sales mix
     const wkCatS={};const wkCatP={};
-    const wkCatWtTot=SCATS.reduce((s,c)=>s+(catTgt(c)/100)*(velTotS>0?wkSalesEst*(vel[c].avgS/velTotS):wkSalesEst*salesMix[c]),0);
+    const wkCatWtTot=SCATS.reduce((s,c)=>s+(catExp(c)/100)*(velTotS>0?wkSalesEst*(vel[c].avgS/velTotS):wkSalesEst*salesMix[c]),0);
     SCATS.forEach(cat=>{
       wkCatS[cat]=velTotS>0?wkSalesEst*(vel[cat].avgS/velTotS):wkSalesEst*salesMix[cat];
-      const catWt=wkCatWtTot>0?(catTgt(cat)/100)*wkCatS[cat]/wkCatWtTot:0;
+      const catWt=wkCatWtTot>0?(catExp(cat)/100)*wkCatS[cat]/wkCatWtTot:0;
       wkCatP[cat]=wkOrderTot*catWt;
     });
     const isOverride=st.weekSales[w]>0;
@@ -1945,6 +1974,8 @@ function captureCurrentPeriod(){
       costTarget:$('costTarget').value,tgtBeer:$('tgtBeer').value,
       tgtWine:$('tgtWine').value,tgtLiquor:$('tgtLiquor').value,
       tgtConsumables:$('tgtConsumables').value,
+      expRateBeer:$('expRateBeer').value,expRateWine:$('expRateWine').value,
+      expRateLiquor:$('expRateLiquor').value,expRateConsumables:$('expRateConsumables').value,
       expWeeklySales:$('expWeeklySales').value,
       ppW1:$('ppW1').value,ppW2:$('ppW2').value,
       ppW3:$('ppW3').value,ppW4:$('ppW4').value,
@@ -1958,6 +1989,7 @@ function applyPeriodSnapshot(snap){
   ['pName','pStart','begBeer','begWine','begLiquor','begConsumables','begTotal',
    'endBeer','endWine','endLiquor','endConsumables','endTotal',
    'costTarget','tgtBeer','tgtWine','tgtLiquor','tgtConsumables',
+   'expRateBeer','expRateWine','expRateLiquor','expRateConsumables',
    'expWeeklySales','ppW1','ppW2','ppW3','ppW4'
   ].forEach(k=>{if($(k)&&s[k]!==undefined)$(k).value=s[k];});
   if(snap.weeks)st=JSON.parse(JSON.stringify(snap.weeks));
@@ -2123,6 +2155,10 @@ function saveToStorage() {
         tgtWine: $('tgtWine').value,
         tgtLiquor: $('tgtLiquor').value,
         tgtConsumables: $('tgtConsumables').value,
+        expRateBeer: $('expRateBeer').value,
+        expRateWine: $('expRateWine').value,
+        expRateLiquor: $('expRateLiquor').value,
+        expRateConsumables: $('expRateConsumables').value,
         expWeeklySales: $('expWeeklySales').value,
         ppW1: $('ppW1').value,
         ppW2: $('ppW2').value,
@@ -2169,6 +2205,12 @@ function loadFromStorage() {
       if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
       if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
     }
+    // Expected pour rates are trailing-actual forecast inputs, not period goals —
+    // they intentionally carry across period transitions.
+    if (s.expRateBeer) $('expRateBeer').value = s.expRateBeer;
+    if (s.expRateWine) $('expRateWine').value = s.expRateWine;
+    if (s.expRateLiquor) $('expRateLiquor').value = s.expRateLiquor;
+    if (s.expRateConsumables) $('expRateConsumables').value = s.expRateConsumables;
     if (s.expWeeklySales) $('expWeeklySales').value = s.expWeeklySales;
     if (s.ppW1) $('ppW1').value = s.ppW1;
     if (s.ppW2) $('ppW2').value = s.ppW2;

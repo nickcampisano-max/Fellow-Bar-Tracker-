@@ -4,6 +4,22 @@ All notable changes to the Fellow Bar 28-Day Period Tracker are documented here.
 
 ---
 
+## [v5.31] — 2026-10-01
+### Added
+- **Expected Pour Rates — separate forecast inputs from cost targets.** New Period Setup section with four fields (`expRateBeer`, `expRateWine`, `expRateLiquor`, `expRateConsumables`), defaulting to the trailing 2-period actuals: Beer 34.93%, Wine 23.50%, Liquor 13.56%, Consumables 4.23%. New `catExp(cat)` helper returns the expected rate, falling back to `catTgt(cat)` when the field is blank or zero — so behaviour is unchanged if the fields are cleared.
+- Thirteen forecast call sites switched from `catTgt()` to `catExp()`: estimated ending inventory (both the Beer/Wine/Liquor path and the Consumables path), the Manager Game Plan weekly order target, the live week-status order target, velocity purchase estimates (current and last-year blend), the projection engine's category weighting and projected ending, the expected-sales budget allocation, and the weekly target table's category split.
+- Goal-facing uses deliberately left on `catTgt()`: daily and weekly cost % colouring, the Period Summary target column, adjusted pour cost pass/fail, the consumables messaging, and the email recap flags. Cost Targets remain 25 / 25 / 14 / 5 with a 21.5% blended goal.
+
+### Fixed
+- **Expected Pour Rates persist across period transitions.** The v5.22 guard (`samePeriod`) intentionally resets cost targets to HTML defaults when the stored period name differs from the current one, so no target edit made in the browser survived a page reload on a new period. The four expected-rate fields are restored unconditionally in `applyPeriodSnapshot()` and in the load routine, since they are trailing-actual forecast inputs rather than per-period goals. Added to both save payloads and the snapshot id list.
+
+### Why
+The estimator previously used the cost *target* as its forecast of consumption, so mid-period inventory estimates assumed every category poured exactly at goal. Across P9 and P10 that assumption failed in a consistent direction — beer poured well above its 25% target (38.22%, then 31.64%) while wine, liquor and consumables all beat theirs. In P10 the estimate put drift at −$927 against an actual −$419, an error of $508 at the category level.
+
+### Verification and known limits
+Backtested against P10 actuals, the trailing-rate estimate misses by −$317 versus −$508 for the target-based version. The clean out-of-sample test (P9 rates predicting P10, no P10 data in the inputs) misses by −$329. **Expect roughly ±$300 of error on a ~$7,400 shelf — improved, not solved.** Two closed periods is a thin basis; rates should be rolled to a 3-period average after P11 closes. Runtime behaviour was not exercised before deploy: JS syntax checked clean and the diff was verified to touch only forecast code, but the math itself is unverified until live data runs through it. Failure signal: if drift after deploy is identical to the pre-deploy figure, the fields are not reaching the calculation.
+
+
 ## [v5.30] — 2026-07-08
 ### Changed
 - **Manager Game Plan Week 1 now surfaces ppW4** — when prior period Week 4 data exists, the opening week message now reads "Prior period Wk 4 (most recent week): $X,XXX in sales. Purchase to target: $XXX." instead of "no prior data to reference." Gives the manager a concrete sales anchor before placing their first order. Falls back to "No prior period data available" when ppW4 is blank.
