@@ -269,11 +269,11 @@ body.history-view.editing-history .plan-input{pointer-events:auto!important;opac
     <div class="setup-grid">
       <div class="field">
         <label class="flbl" for="pName">Period Name</label>
-        <input class="fin" id="pName" type="text" value="Period 8" oninput="render()">
+        <input class="fin" id="pName" type="text" value="Period 12" oninput="render()">
       </div>
       <div class="field">
         <label class="flbl" for="pStart">Period Start</label>
-        <input class="fin" id="pStart" type="date" value="2026-07-06" oninput="render()">
+        <input class="fin" id="pStart" type="date" value="2026-10-26" oninput="render()">
       </div>
     </div>
 
@@ -2195,16 +2195,18 @@ function loadFromStorage() {
     if (s.endLiquor) $('endLiquor').value = s.endLiquor;
     if (s.endConsumables) $('endConsumables').value = s.endConsumables;
     if (s.endTotal) $('endTotal').value = s.endTotal;
-    // Only restore cost targets if this is the same period — otherwise use HTML defaults
-    // This prevents Period 7 targets from overriding Period 8 defaults on transition
-    const samePeriod = s.pName === htmlPeriodName;
-    if (samePeriod) {
-      if (s.costTarget) $('costTarget').value = s.costTarget;
-      if (s.tgtBeer) $('tgtBeer').value = s.tgtBeer;
-      if (s.tgtWine) $('tgtWine').value = s.tgtWine;
-      if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
-      if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
-    }
+    // v5.32: cost targets now restore from storage unconditionally. The old samePeriod
+    // guard compared stored pName against the HTML default, so once the HTML fell behind
+    // the live period it could never match again — which silently made cost targets
+    // un-editable: any change reverted to the HTML default on every reload. Period
+    // rollover is handled by writing storage directly, so the guard no longer protects
+    // anything. htmlPeriodName is retained only as a fallback when storage has no pName.
+    if (s.costTarget) $('costTarget').value = s.costTarget;
+    if (s.tgtBeer) $('tgtBeer').value = s.tgtBeer;
+    if (s.tgtWine) $('tgtWine').value = s.tgtWine;
+    if (s.tgtLiquor) $('tgtLiquor').value = s.tgtLiquor;
+    if (s.tgtConsumables) $('tgtConsumables').value = s.tgtConsumables;
+    if (!s.pName && htmlPeriodName) $('pName').value = htmlPeriodName;
     // Expected pour rates are trailing-actual forecast inputs, not period goals —
     // they intentionally carry across period transitions.
     if (s.expRateBeer) $('expRateBeer').value = s.expRateBeer;
